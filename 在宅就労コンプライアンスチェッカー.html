@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>在宅就労コンプライアンスチェッカー｜JAPANICARE（令和8年度対応）</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Meiryo', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: #f0f4f8;
+      color: #2c3e50;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+
+    .header {
+      background: linear-gradient(135deg, #1a3a5c, #2e6da4);
+      color: white; padding: 16px 22px; border-radius: 10px;
+      margin-bottom: 18px; display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .header-icon { font-size: 2rem; }
+    .header h1 { font-size: 1.1rem; font-weight: bold; }
+    .header p  { font-size: 0.76rem; opacity: .75; margin-top: 2px; }
+
+    .step {
+      background: white; border-radius: 10px; padding: 18px 20px;
+      margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: #1a3a5c; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: bold; flex-shrink: 0;
+    }
+    .step-title { font-size: .95rem; font-weight: bold; color: #1a3a5c; }
+
+    .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: .78rem; color: #555; font-weight: bold; }
+    .form-group input, .form-group select {
+      padding: 7px 10px; border: 1px solid #d0d7de; border-radius: 5px;
+      font-size: .88rem; font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: #2e6da4; box-shadow: 0 0 0 2px rgba(46,109,164,.15);
+    }
+
+    .rule-box {
+      background: #eef3f8; border-left: 3px solid #2e6da4;
+      border-radius: 0 6px 6px 0; padding: 10px 14px;
+      font-size: .78rem; color: #444; line-height: 1.8;
+      margin-top: 10px;
+    }
+    .rule-box strong { color: #1a3a5c; }
+    .rule-box .rule-item { margin-bottom: 2px; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th {
+      background: #1a3a5c; color: white; padding: 8px 10px;
+      text-align: center; font-weight: bold; white-space: nowrap; font-size: .78rem;
+    }
+    td {
+      padding: 6px 6px; border-bottom: 1px solid #e8ecf0;
+      text-align: center; vertical-align: middle;
+    }
+    tr:nth-child(even) td { background: #f7f9fc; }
+    td input[type="text"], td input[type="number"], td input[type="month"], td select {
+      width: 100%; padding: 5px 7px; border: 1px solid #d0d7de; border-radius: 4px;
+      font-size: .82rem; font-family: inherit; background: white;
+    }
+    td input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+    .del-btn {
+      background: #e74c3c; color: white; border: none; border-radius: 4px;
+      padding: 4px 9px; cursor: pointer; font-size: .75rem;
+    }
+    .del-btn:hover { background: #c0392b; }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer;
+      font-size: .88rem; font-family: inherit; font-weight: bold; transition: background .15s;
+    }
+    .btn-add { background: #2e6da4; color: white; }
+    .btn-add:hover { background: #1a3a5c; }
+    .btn-check {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      color: white; font-size: 1rem; padding: 12px 32px;
+      box-shadow: 0 2px 6px rgba(39,174,96,.4);
+    }
+    .btn-check:hover { background: linear-gradient(135deg, #219a52, #27ae60); }
+    .btn-export { background: #7f8c8d; color: white; }
+    .btn-export:hover { background: #5d6d7e; }
+    .btn-reset { background: #ecf0f1; color: #555; border: 1px solid #ccc; }
+    .btn-reset:hover { background: #dfe6e9; }
+
+    /* Results */
+    .result-section { display: none; }
+    .result-section.visible { display: block; }
+
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 700px) { .summary-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .summary-grid { grid-template-columns: 1fr; } }
+
+    .summary-card {
+      border-radius: 8px; padding: 14px 16px; border: 2px solid;
+    }
+    .summary-card.ok { border-color: #27ae60; background: #eafaf1; }
+    .summary-card.ng { border-color: #e74c3c; background: #fdf3f2; }
+    .summary-card.warn { border-color: #f39c12; background: #fef9e7; }
+    .summary-card.info { border-color: #3498db; background: #ebf5fb; }
+    .summary-card .card-label { font-size: .72rem; color: #777; margin-bottom: 3px; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; }
+    .summary-card .card-value { font-size: 1.5rem; font-weight: bold; line-height: 1.2; }
+    .summary-card.ok .card-value { color: #27ae60; }
+    .summary-card.ng .card-value { color: #e74c3c; }
+    .summary-card.warn .card-value { color: #e67e22; }
+    .summary-card.info .card-value { color: #2980b9; }
+    .summary-card .card-detail { font-size: .73rem; color: #777; margin-top: 5px; line-height: 1.5; }
+
+    .badge {
+      display: inline-block; padding: 1px 7px; border-radius: 10px;
+      font-size: .7rem; font-weight: bold; vertical-align: middle;
+    }
+    .badge-ok { background: #27ae60; color: white; }
+    .badge-ng { background: #e74c3c; color: white; }
+    .badge-warn { background: #f39c12; color: white; }
+    .badge-info { background: #3498db; color: white; }
+    .badge-exempt { background: #95a5a6; color: white; }
+
+    .result-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .result-table th { background: #2c3e50; color: white; padding: 9px 8px; text-align: center; font-size: .75rem; white-space: nowrap; }
+    .result-table td { padding: 9px 8px; border-bottom: 1px solid #e8ecf0; text-align: center; vertical-align: middle; }
+    .result-table .ok-row td { background: #eafaf1; }
+    .result-table .ng-row td { background: #fdf3f2; }
+    .result-table .warn-row td { background: #fef9e7; }
+
+    .notice {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 8px; border-radius: 4px; font-size: .72rem; font-weight: bold;
+      white-space: nowrap;
+    }
+    .notice-ok { background: #eafaf1; border: 1px solid #27ae60; color: #27ae60; }
+    .notice-ng { background: #fdf3f2; border: 1px solid #e74c3c; color: #e74c3c; }
+    .notice-warn { background: #fef9e7; border: 1px solid #f39c12; color: #e67e22; }
+    .notice-exempt { background: #f4f6f7; border: 1px solid #bdc3c7; color: #95a5a6; }
+    .notice-na { background: #f4f6f7; border: 1px solid #ddd; color: #aaa; }
+
+    .kiso-box {
+      background: #fff8e1; border: 1px solid #f39c12; border-radius: 6px;
+      padding: 10px 14px; font-size: .78rem; color: #7d5a00; margin-bottom: 14px;
+      line-height: 1.7;
+    }
+    .kiso-box strong { color: #c0392b; }
+
+    .section-title {
+      font-size: .88rem; font-weight: bold; color: #1a3a5c;
+      margin: 16px 0 10px; padding-bottom: 5px;
+      border-bottom: 2px solid #d0dce8;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <div class="header-icon">🏠</div>
+    <div>
+      <h1>在宅就労コンプライアンスチェッカー｜JAPANICARE（令和8年度対応）</h1>
+      <p>利用者割合50%ルール・支給量比率・医師意見書要否・計画相談支援確認・届出状況を一括チェック（令和8年10月1日施行）</p>
+    </div>
+  </div>
+
+  <!-- 経過措置アラート -->
+  <div class="kiso-box">
+    ⚠️ <strong>経過措置：</strong>令和8年3月以前から在宅就労支援を行っている者は、<strong>令和8年9月30日まで</strong>経過措置として継続可。
+    令和8年10月1日以降も継続する場合は、<strong>令和8年8月31日まで</strong>に届出が必要です。<br>
+    ※各ルールは令和8年10月1日以降の新規・継続者に適用されます。対象期間に合わせてご使用ください。
+  </div>
+
+  <!-- Step 1: 事業所情報 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">事業所情報・対象月を入力</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>対象年月</label>
+        <input type="month" id="targetMonth">
+      </div>
+      <div class="form-group">
+        <label>利用契約者数（総数）</label>
+        <input type="number" id="totalContractUsers" min="1" placeholder="例: 30" style="width:130px">
+      </div>
+      <div class="form-group">
+        <label>利用定員</label>
+        <input type="number" id="facilityCapacity" min="1" placeholder="例: 20" style="width:100px">
+      </div>
+    </div>
+    <div class="rule-box">
+      <strong>【令和8年10月1日施行｜在宅就労50%ルール】</strong>
+      <div class="rule-item">📌 <strong>利用者割合</strong>：利用契約者数に対する在宅就労利用者数（①重度障がい除く）が <strong>50%以下</strong> であること</div>
+      <div class="rule-item">📌 <strong>各日の定員比率</strong>：各日の利用定員に対する在宅就労利用者数（①除く）が <strong>50%以下</strong> であること（要・日次確認）</div>
+      <div class="rule-item">📌 <strong>支給量比率</strong>：各利用者の当月在宅就労日数が支給量（決定日数）の <strong>50%以下</strong> であること（①除く）</div>
+      <div class="rule-item">📌 <strong>医師意見書</strong>：精神障がい②で在宅就労開始から <strong>6ヶ月超</strong> の場合に必要</div>
+      <div class="rule-item">📌 <strong>計画相談支援確認</strong>：精神障がい②で在宅就労開始から <strong>1年超</strong> の場合、別法人による計画相談支援等の必要性確認が必要</div>
+    </div>
+  </div>
+
+  <!-- Step 2: 利用者データ入力 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">在宅就労を行っている利用者を入力（1人ずつ追加）</div>
+    </div>
+    <div class="table-wrap">
+      <table id="userTable">
+        <thead>
+          <tr>
+            <th style="width:110px">氏名 / ID</th>
+            <th style="width:160px">障がい区分</th>
+            <th style="width:85px">支給量<br>（月の決定日数）</th>
+            <th style="width:85px">当月<br>在宅就労日数</th>
+            <th style="width:120px">在宅就労<br>開始月</th>
+            <th style="width:75px">届出済</th>
+            <th style="width:80px">医師意見書<br>取得済</th>
+            <th style="width:80px">計画相談<br>支援確認済</th>
+            <th style="width:46px"></th>
+          </tr>
+        </thead>
+        <tbody id="userRows"></tbody>
+      </table>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-add" onclick="addRow()">＋ 利用者を追加</button>
+    </div>
+  </div>
+
+  <!-- Step 3: 実行 -->
+  <div class="step" style="text-align:center; padding: 22px;">
+    <button class="btn btn-check" onclick="runCheck()">✔ コンプライアンスチェックを実行</button>
+    <p style="font-size:.75rem; color:#999; margin-top:8px;">入力内容を元に各ルールの適合状況をチェックします</p>
+  </div>
+
+  <!-- Step 4: 結果 -->
+  <div class="step result-section" id="resultSection">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div class="step-title" id="resultTitle">チェック結果</div>
+    </div>
+
+    <div class="section-title">🏢 事業所レベルチェック</div>
+    <div class="summary-grid" id="facilitySummary"></div>
+
+    <div class="section-title">👤 利用者別チェック結果</div>
+    <div class="table-wrap">
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th>氏名 / ID</th>
+            <th>障がい区分</th>
+            <th>在宅就労日数 / 支給量</th>
+            <th>支給量比率</th>
+            <th>在宅継続期間</th>
+            <th>医師意見書</th>
+            <th>計画相談支援</th>
+            <th>届出</th>
+            <th>総合判定</th>
+          </tr>
+        </thead>
+        <tbody id="resultRows"></tbody>
+      </table>
+    </div>
+
+    <div id="ngSummary" style="display:none; margin-top:14px;"></div>
+
+    <div class="btn-row" style="margin-top:16px; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-reset" onclick="resetResult()">← 入力に戻る</button>
+      <button class="btn btn-export" onclick="exportCSV()">📥 CSVエクスポート</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let rowCount = 0;
+let lastResults = null;
+
+function addRow(data = {}) {
+  rowCount++;
+  const id = `row-${rowCount}`;
+  const tbody = document.getElementById('userRows');
+  const tr = document.createElement('tr');
+  tr.id = id;
+  tr.innerHTML = `
+    <td><input type="text" placeholder="氏名またはID" value="${data.name || ''}"></td>
+    <td>
+      <select>
+        <option value="2" ${data.type == '2' ? 'selected' : ''}>②精神障がい</option>
+        <option value="1" ${data.type == '1' ? 'selected' : ''}>①重度障がい（50%ルール免除）</option>
+        <option value="3" ${data.type == '3' ? 'selected' : ''}>③その他（市が特に認めた場合）</option>
+      </select>
+    </td>
+    <td><input type="number" min="1" max="31" placeholder="日数" value="${data.shikyu || ''}" style="width:70px;"></td>
+    <td><input type="number" min="0" max="31" placeholder="日数" value="${data.zaitaku || ''}" style="width:70px;"></td>
+    <td><input type="month" value="${data.startMonth || ''}"></td>
+    <td><input type="checkbox" title="届出済みの場合チェック" ${data.todoke ? 'checked' : ''}></td>
+    <td><input type="checkbox" title="医師意見書を取得済みの場合チェック" ${data.doctor ? 'checked' : ''}></td>
+    <td><input type="checkbox" title="計画相談支援の確認済みの場合チェック" ${data.plan ? 'checked' : ''}></td>
+    <td><button class="del-btn" onclick="delRow('${id}')">削除</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function delRow(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function getRows() {
+  const rows = [];
+  document.querySelectorAll('#userRows tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('input, select');
+    rows.push({
+      name:       inputs[0].value.trim() || '（未入力）',
+      type:       inputs[1].value,
+      shikyu:     parseInt(inputs[2].value) || 0,
+      zaitaku:    parseInt(inputs[3].value) || 0,
+      startMonth: inputs[4].value,
+      todoke:     inputs[5].checked,
+      doctor:     inputs[6].checked,
+      plan:       inputs[7].checked,
+    });
+  });
+  return rows;
+}
+
+function monthDiff(startMonth, targetMonth) {
+  if (!startMonth || !targetMonth) return null;
+  const [sy, sm] = startMonth.split('-').map(Number);
+  const [ty, tm] = targetMonth.split('-').map(Number);
+  return (ty - sy) * 12 + (tm - sm);
+}
+
+function formatPeriod(diff) {
+  if (diff === null) return '—';
+  if (diff < 0) return `開始前`;
+  const y = Math.floor(diff / 12);
+  const m = diff % 12;
+  if (y === 0) return `${m}ヶ月`;
+  if (m === 0) return `${y}年`;
+  return `${y}年${m}ヶ月`;
+}
+
+function formatMonth(ym) {
+  if (!ym) return '—';
+  const [y, m] = ym.split('-');
+  return `${y}年${parseInt(m)}月`;
+}
+
+function runCheck() {
+  const targetMonth  = document.getElementById('targetMonth').value;
+  const totalUsers   = parseInt(document.getElementById('totalContractUsers').value) || 0;
+  const rows         = getRows();
+
+  // バリデーション
+  if (!targetMonth)  { alert('対象年月を入力してください。'); return; }
+  if (!totalUsers)   { alert('利用契約者数（総数）を入力してください。'); return; }
+  if (rows.length === 0) { alert('利用者を1名以上入力してください。'); return; }
+
+  // 事業所レベル：①除く在宅就労利用者数
+  const zaitakuNonExempt = rows.filter(r => r.type !== '1');
+  const zaitakuCount     = zaitakuNonExempt.length;
+  const zaitakuRatio     = (zaitakuCount / totalUsers) * 100;
+  const zaitakuOk        = zaitakuRatio <= 50;
+
+  // 利用者別チェック
+  const userResults = rows.map(r => {
+    const isExempt = r.type === '1';
+    const isPsych  = r.type === '2';
+
+    // 支給量比率
+    const ratio    = (r.shikyu > 0) ? (r.zaitaku / r.shikyu * 100) : null;
+    const ratioOk  = isExempt ? null : (ratio !== null ? ratio <= 50 : null);
+
+    // 継続期間（月数）
+    const diff     = monthDiff(r.startMonth, targetMonth);
+
+    // 医師意見書（②のみ、6ヶ月超）
+    let doctorNeed = false;
+    let doctorPhase = null; // 'ok' | 'need' | 'done' | null
+    if (isPsych && diff !== null) {
+      if (diff > 6) {
+        doctorNeed = true;
+        doctorPhase = r.doctor ? 'done' : 'need';
+      } else {
+        doctorPhase = 'ok';
+      }
+    }
+
+    // 計画相談支援（②のみ、12ヶ月超）
+    let planNeed = false;
+    let planPhase = null;
+    if (isPsych && diff !== null) {
+      if (diff > 12) {
+        planNeed = true;
+        planPhase = r.plan ? 'done' : 'need';
+      } else {
+        planPhase = 'ok';
+      }
+    }
+
+    // 届出
+    const todoke = r.todoke;
+
+    // 総合判定
+    let overall = 'ok';
+    if (!isExempt && ratioOk === false) overall = 'ng';
+    if (doctorPhase === 'need' || planPhase === 'need') {
+      if (overall !== 'ng') overall = 'warn';
+    }
+    if (!todoke) {
+      if (overall !== 'ng') overall = 'warn';
+    }
+
+    return { ...r, isExempt, isPsych, ratio, ratioOk, diff, doctorPhase, planPhase, overall };
+  });
+
+  lastResults = { targetMonth, totalUsers, zaitakuCount, zaitakuRatio, zaitakuOk, userResults, rows };
+
+  renderFacilitySummary(totalUsers, zaitakuCount, zaitakuRatio, zaitakuOk, rows.length);
+  renderUserResults(userResults);
+  renderNgSummary(userResults, zaitakuOk, targetMonth);
+
+  // 結果タイトル
+  const ngCount   = userResults.filter(u => u.overall === 'ng').length;
+  const warnCount = userResults.filter(u => u.overall === 'warn').length;
+  const title = document.getElementById('resultTitle');
+  if (!zaitakuOk || ngCount > 0) {
+    title.innerHTML = `チェック結果 <span class="badge badge-ng">NG ${ngCount + (!zaitakuOk ? 1 : 0)}件</span>`;
+  } else if (warnCount > 0) {
+    title.innerHTML = `チェック結果 <span class="badge badge-warn">要注意 ${warnCount}件</span>`;
+  } else {
+    title.innerHTML = `チェック結果 <span class="badge badge-ok">全項目OK</span>`;
+  }
+
+  document.getElementById('resultSection').classList.add('visible');
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderFacilitySummary(total, nonExempt, ratio, ok, allZaitaku) {
+  const c = document.getElementById('facilitySummary');
+  const exemptCount = allZaitaku - nonExempt;
+
+  c.innerHTML = `
+    <div class="summary-card ${ok ? 'ok' : 'ng'}">
+      <div class="card-label">① 在宅就労利用者割合（重度除く）</div>
+      <div class="card-value">${ratio.toFixed(1)}%
+        <span class="badge badge-${ok ? 'ok' : 'ng'}">${ok ? 'OK' : 'NG'}</span>
+      </div>
+      <div class="card-detail">
+        在宅利用者（②③）: <strong>${nonExempt}名</strong> ÷ 利用契約者: <strong>${total}名</strong><br>
+        上限50%（${Math.floor(total * 0.5)}名まで）
+      </div>
+    </div>
+
+    <div class="summary-card info">
+      <div class="card-label">在宅就労利用者数（全体）</div>
+      <div class="card-value">${allZaitaku}名</div>
+      <div class="card-detail">
+        うち①重度障がい（免除）: ${exemptCount}名<br>
+        うち②③（50%ルール対象）: ${nonExempt}名
+      </div>
+    </div>
+
+    <div class="summary-card warn" style="grid-column: span 1;">
+      <div class="card-label">⚠ 各日の定員比率（要・別途確認）</div>
+      <div class="card-value" style="font-size:0.85rem; font-weight:normal; color:#7d5a00; margin-top:4px;">
+        実績記録票で日別に在宅利用者数を確認してください。各日の利用定員の50%（上限）を超えていないか手動チェックが必要です。
+      </div>
+    </div>
+  `;
+}
+
+function renderUserResults(users) {
+  const tbody = document.getElementById('resultRows');
+  tbody.innerHTML = '';
+
+  users.forEach(u => {
+    const tr = document.createElement('tr');
+    tr.className = `${u.overall}-row`;
+
+    const typeLabels = { '1': '①重度障がい（免除）', '2': '②精神障がい', '3': '③その他' };
+    const typeLabel = typeLabels[u.type] || u.type;
+
+    // 支給量比率セル
+    let ratioCell;
+    if (u.isExempt) {
+      ratioCell = `<span class="notice notice-exempt">免除</span>`;
+    } else if (u.ratio !== null) {
+      const cls = u.ratioOk ? 'notice-ok' : 'notice-ng';
+      const badge = u.ratioOk ? '✔ OK' : '✘ NG';
+      ratioCell = `${u.ratio.toFixed(1)}% <span class="notice ${cls}">${badge}</span>`;
+    } else {
+      ratioCell = '—';
+    }
+
+    // 医師意見書セル
+    let docCell;
+    if (u.isExempt) {
+      docCell = `<span class="notice notice-exempt">対象外</span>`;
+    } else if (!u.isPsych) {
+      docCell = `<span class="notice notice-na">対象外</span>`;
+    } else if (u.doctorPhase === 'ok') {
+      docCell = `<span class="notice notice-ok">不要</span>`;
+    } else if (u.doctorPhase === 'need') {
+      docCell = `<span class="notice notice-warn">⚠ 要取得</span>`;
+    } else if (u.doctorPhase === 'done') {
+      docCell = `<span class="notice notice-ok">✔ 取得済</span>`;
+    } else {
+      docCell = `<span class="notice notice-na">開始月未入力</span>`;
+    }
+
+    // 計画相談支援セル
+    let planCell;
+    if (u.isExempt) {
+      planCell = `<span class="notice notice-exempt">対象外</span>`;
+    } else if (!u.isPsych) {
+      planCell = `<span class="notice notice-na">対象外</span>`;
+    } else if (u.planPhase === 'ok') {
+      planCell = `<span class="notice notice-ok">不要</span>`;
+    } else if (u.planPhase === 'need') {
+      planCell = `<span class="notice notice-warn">⚠ 要確認</span>`;
+    } else if (u.planPhase === 'done') {
+      planCell = `<span class="notice notice-ok">✔ 確認済</span>`;
+    } else {
+      planCell = `<span class="notice notice-na">開始月未入力</span>`;
+    }
+
+    // 届出セル
+    const todoke = u.todoke
+      ? `<span class="notice notice-ok">✔ 済</span>`
+      : `<span class="notice notice-warn">⚠ 未</span>`;
+
+    // 総合判定
+    const overallMap = {
+      ok:   `<span class="badge badge-ok">OK</span>`,
+      ng:   `<span class="badge badge-ng">NG</span>`,
+      warn: `<span class="badge badge-warn">要注意</span>`,
+    };
+
+    tr.innerHTML = `
+      <td style="text-align:left; font-weight:bold; padding-left:10px;">${u.name}</td>
+      <td>${typeLabel}</td>
+      <td>${u.zaitaku}日 / ${u.shikyu}日</td>
+      <td>${ratioCell}</td>
+      <td>${formatPeriod(u.diff)}</td>
+      <td>${docCell}</td>
+      <td>${planCell}</td>
+      <td>${todoke}</td>
+      <td>${overallMap[u.overall] || '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderNgSummary(users, facilityOk, targetMonth) {
+  const box = document.getElementById('ngSummary');
+  const issues = [];
+
+  if (!facilityOk) {
+    issues.push('🔴 <strong>事業所全体</strong>：在宅就労利用者割合（②③）が50%を超えています。通所への移行を促進してください。');
+  }
+
+  users.forEach(u => {
+    if (u.overall === 'ng' && u.ratioOk === false) {
+      issues.push(`🔴 <strong>${u.name}</strong>：支給量比率 ${u.ratio.toFixed(1)}%（上限50%超過）`);
+    }
+    if (u.doctorPhase === 'need') {
+      issues.push(`🟡 <strong>${u.name}</strong>：在宅就労継続 ${formatPeriod(u.diff)}—医師の意見書を取得してください。`);
+    }
+    if (u.planPhase === 'need') {
+      issues.push(`🟡 <strong>${u.name}</strong>：在宅就労継続 ${formatPeriod(u.diff)}—別法人による計画相談支援等の必要性確認が必要です。`);
+    }
+    if (!u.todoke) {
+      issues.push(`🟡 <strong>${u.name}</strong>：在宅就労の届出が未完了です。`);
+    }
+  });
+
+  if (issues.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="background:#fff3cd; border:1px solid #f39c12; border-radius:8px; padding:14px 16px;">
+      <div style="font-weight:bold; color:#c0392b; margin-bottom:8px; font-size:.88rem;">📋 要対応事項まとめ（${formatMonth(targetMonth)}）</div>
+      <ul style="list-style:none; padding:0; font-size:.82rem; line-height:2;">
+        ${issues.map(i => `<li>${i}</li>`).join('')}
+      </ul>
+    </div>
+  `;
+}
+
+function resetResult() {
+  document.getElementById('resultSection').classList.remove('visible');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function exportCSV() {
+  if (!lastResults) return;
+  const { targetMonth, totalUsers, zaitakuCount, zaitakuRatio, zaitakuOk, userResults } = lastResults;
+
+  let csv = `在宅就労コンプライアンスチェック結果\n対象月:,${formatMonth(targetMonth)}\n`;
+  csv += `利用契約者数:,${totalUsers}\n`;
+  csv += `在宅就労利用者（①除く）:,${zaitakuCount}名\n`;
+  csv += `在宅就労利用者割合（①除く）:,${zaitakuRatio.toFixed(1)}%,${zaitakuOk ? 'OK' : 'NG'}\n\n`;
+  csv += `氏名/ID,障がい区分,在宅就労日数,支給量,支給量比率,支給量チェック,継続期間,医師意見書,計画相談支援確認,届出,総合判定\n`;
+
+  userResults.forEach(u => {
+    const types = { '1': '①重度障がい（免除）', '2': '②精神障がい', '3': '③その他' };
+    const phaseMap = { ok: '不要', need: '要確認', done: '確認済', null: '対象外' };
+    csv += [
+      `"${u.name}"`,
+      `"${types[u.type]}"`,
+      u.zaitaku,
+      u.shikyu,
+      u.ratio !== null ? `${u.ratio.toFixed(1)}%` : '—',
+      u.isExempt ? '免除' : (u.ratioOk === true ? 'OK' : u.ratioOk === false ? 'NG' : '—'),
+      `"${formatPeriod(u.diff)}"`,
+      `"${phaseMap[u.doctorPhase] || '対象外'}"`,
+      `"${phaseMap[u.planPhase] || '対象外'}"`,
+      u.todoke ? '済' : '未',
+      u.overall === 'ok' ? 'OK' : u.overall === 'ng' ? 'NG' : '要注意',
+    ].join(',') + '\n';
+  });
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `在宅就労チェック_${targetMonth}.csv`;
+  a.click();
+}
+
+// 初期化
+(function init() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('targetMonth').value = `${y}-${m}`;
+  addRow();
+  addRow();
+  addRow();
+})();
+</script>
+</body>
+</html>

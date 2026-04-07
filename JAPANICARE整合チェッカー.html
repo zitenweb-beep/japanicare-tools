@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>整合チェッカー｜JAPANICARE</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Meiryo', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: #f0f4f8;
+      color: #2c3e50;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+
+    .header {
+      background: linear-gradient(135deg, #1a3a5c, #2e6da4);
+      color: white; padding: 16px 22px; border-radius: 10px;
+      margin-bottom: 18px; display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .header-icon { font-size: 2rem; }
+    .header h1 { font-size: 1.1rem; font-weight: bold; }
+    .header p  { font-size: 0.76rem; opacity: .75; margin-top: 2px; }
+
+    /* STEPS */
+    .step { background: white; border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+    .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: #1a3a5c; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: bold; flex-shrink: 0;
+    }
+    .step-title { font-size: .95rem; font-weight: bold; color: #1a3a5c; }
+
+    /* PASTE AREA */
+    .paste-hint {
+      background: #f0f4f8; border-radius: 6px; padding: 10px 14px;
+      font-size: .82rem; color: #555; margin-bottom: 10px; line-height: 1.6;
+    }
+    .paste-hint strong { color: #1a3a5c; }
+    .paste-hint .kbd {
+      display: inline-block; background: white; border: 1px solid #ccc;
+      border-bottom: 2px solid #aaa; border-radius: 3px;
+      padding: 1px 5px; font-family: monospace; font-size: .82rem;
+      line-height: 1.5;
+    }
+    textarea#pdf-text {
+      width: 100%; min-height: 120px; resize: vertical;
+      border: 2px solid #b0c4d8; border-radius: 8px;
+      padding: 10px; font-size: .82rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      color: #333; background: #fafcff;
+      outline: none; transition: border-color .2s;
+    }
+    textarea#pdf-text:focus { border-color: #2e6da4; background: white; }
+    textarea#pdf-text.has-text { border-color: #27ae60; background: #f0fdf4; }
+    .paste-count { font-size: .75rem; color: #888; margin-top: 4px; text-align: right; }
+
+    /* EXCEL DROP */
+    .drop-zone {
+      background: white; border: 2px dashed #b0c4d8;
+      border-radius: 10px; padding: 22px 16px;
+      text-align: center; cursor: pointer; transition: all .2s;
+    }
+    .drop-zone:hover { border-color: #2e6da4; background: #f5f9fe; }
+    .drop-zone.drag-over { border-color: #2980b9; background: #eaf4fc; }
+    .drop-zone.loaded { border-color: #27ae60; border-style: solid; background: #f0fdf4; }
+    .drop-icon { font-size: 2rem; margin-bottom: 6px; }
+    .drop-title { font-weight: bold; font-size: .88rem; margin-bottom: 3px; }
+    .drop-hint { font-size: .74rem; color: #888; }
+    .drop-status { margin-top: 6px; font-size: .78rem; color: #27ae60; font-weight: bold; }
+    .file-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; justify-content: center; }
+    .file-chip { background: #e8f5e9; color: #2e7d32; font-size: .72rem; padding: 2px 8px; border-radius: 10px; border: 1px solid #c8e6c9; }
+    input[type="file"] { display: none; }
+
+    .run-btn {
+      width: 100%; padding: 14px;
+      background: #1a3a5c; color: white;
+      border: none; border-radius: 8px;
+      font-size: 1rem; font-family: inherit;
+      cursor: pointer; font-weight: bold;
+      margin-bottom: 20px;
+      transition: background .2s, transform .1s;
+      box-shadow: 0 2px 6px rgba(0,0,0,.15);
+    }
+    .run-btn:hover:not(:disabled) { background: #0d2840; transform: translateY(-1px); }
+    .run-btn:disabled { background: #9aa8b4; cursor: not-allowed; box-shadow: none; }
+
+    /* RESULTS */
+    .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .card-title { font-size: .95rem; font-weight: bold; color: #1a3a5c; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #eee; }
+    .summary-row { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 80px; text-align: center; padding: 12px 8px; border-radius: 8px; }
+    .stat.blue { background: #ebf5fb; }
+    .stat.green { background: #eafaf1; }
+    .stat.red { background: #fdedec; }
+    .stat.yellow { background: #fef9e7; }
+    .stat-n { font-size: 2rem; font-weight: bold; color: #1a3a5c; }
+    .stat-l { font-size: .72rem; color: #666; margin-top: 2px; }
+    .person-card { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+    .person-header { display: flex; align-items: center; padding: 10px 14px; gap: 10px; background: #f8f9fa; cursor: pointer; user-select: none; }
+    .person-header:hover { background: #f0f4f8; }
+    .person-badge { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .8rem; font-weight: bold; flex-shrink: 0; }
+    .badge-ok { background: #d5f5e3; color: #1e8449; }
+    .badge-err { background: #fde8e8; color: #c0392b; }
+    .person-name { flex: 1; font-size: .9rem; font-weight: bold; }
+    .person-meta { font-size: .75rem; color: #888; }
+    .person-arrow { font-size: .8rem; color: #aaa; transition: transform .2s; }
+    .person-body { display: none; padding: 0 14px 14px; }
+    .person-body.open { display: block; }
+    .err-table { width: 100%; border-collapse: collapse; font-size: .83rem; margin-top: 8px; }
+    .err-table th { background: #1a3a5c; color: white; padding: 8px 10px; text-align: left; font-weight: normal; }
+    .err-table td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+    .err-table tr:last-child td { border-bottom: none; }
+    .tag { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: .72rem; font-weight: bold; }
+    .tag-mismatch { background: #fde8e8; color: #c0392b; }
+    .tag-pdf { background: #fef9e7; color: #b7950b; }
+    .tag-excel { background: #ebf5fb; color: #1a5276; }
+    .val-pdf { color: #2980b9; }
+    .val-excel { color: #27ae60; }
+    .ok-msg { text-align: center; padding: 20px 10px; color: #27ae60; font-size: .9rem; }
+    .ok-msg .ok-i { font-size: 1.8rem; margin-bottom: 4px; }
+    .unmatched-item { padding: 6px 0; border-bottom: 1px solid #eee; font-size: .85rem; color: #888; }
+    .unmatched-item:last-child { border-bottom: none; }
+    .processing { text-align: center; padding: 40px 20px; }
+    .spinner { display: inline-block; width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #1a3a5c; border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .proc-text { color: #666; font-size: .9rem; }
+    .alert-err { background: #fdedec; border-left: 4px solid #e74c3c; padding: 12px 16px; border-radius: 6px; font-size: .9rem; color: #c0392b; }
+    .alert-warn { background: #fef9e7; border-left: 4px solid #f39c12; padding: 12px 16px; border-radius: 6px; font-size: .88rem; color: #7d6608; margin-bottom: 12px; }
+    .debug-toggle { font-size: .72rem; color: #bbb; cursor: pointer; text-decoration: underline; margin-top: 10px; display: inline-block; }
+    .debug-box { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 4px; padding: 10px; margin-top: 6px; font-size: .7rem; font-family: 'Consolas','Courier New', monospace; white-space: pre-wrap; max-height: 220px; overflow-y: auto; color: #555; display: none; }
+    .export-btn { padding: 7px 16px; background: #ecf0f1; color: #555; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; font-size: .8rem; font-family: inherit; transition: background .2s; }
+    .export-btn:hover { background: #dfe6e9; }
+
+    /* MANUAL */
+    .manual-wrap {
+      background: #fff8e1; border: 1px solid #ffe082;
+      border-radius: 10px; margin-bottom: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .manual-toggle {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 18px; cursor: pointer; user-select: none;
+    }
+    .manual-toggle:hover { background: rgba(255,224,62,.15); border-radius: 10px; }
+    .manual-toggle-icon { font-size: 1.2rem; }
+    .manual-toggle-title { font-size: .9rem; font-weight: bold; color: #6d4c00; flex: 1; }
+    .manual-toggle-arrow { font-size: .8rem; color: #bbb; transition: transform .25s; }
+    .manual-toggle-arrow.open { transform: rotate(90deg); }
+    .manual-body { display: none; padding: 0 18px 18px; }
+    .manual-body.open { display: block; }
+    .manual-section { margin-bottom: 16px; }
+    .manual-section:last-child { margin-bottom: 0; }
+    .manual-section h3 {
+      font-size: .82rem; font-weight: bold; color: #6d4c00;
+      margin-bottom: 8px; padding-bottom: 4px;
+      border-bottom: 1px solid #ffe082;
+    }
+    .manual-steps { list-style: none; }
+    .manual-steps li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: .82rem; color: #444; line-height: 1.6;
+      padding: 5px 0;
+    }
+    .manual-step-num {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      background: #f59e0b; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .7rem; font-weight: bold; margin-top: 2px;
+    }
+    .manual-note {
+      background: #fff3cd; border-left: 3px solid #f59e0b;
+      padding: 8px 12px; border-radius: 4px;
+      font-size: .8rem; color: #555; line-height: 1.6; margin-top: 8px;
+    }
+    .manual-note strong { color: #6d4c00; }
+    .manual-kbd {
+      display: inline-block; background: white; border: 1px solid #ccc;
+      border-bottom: 2px solid #aaa; border-radius: 3px;
+      padding: 1px 5px; font-family: monospace; font-size: .78rem;
+    }
+    .manual-table { width: 100%; border-collapse: collapse; font-size: .8rem; margin-top: 6px; }
+    .manual-table th { background: #fff3cd; color: #6d4c00; padding: 6px 10px; text-align: left; font-weight: bold; border: 1px solid #ffe082; }
+    .manual-table td { padding: 6px 10px; border: 1px solid #ffe082; color: #444; line-height: 1.5; }
+    .manual-table tr:nth-child(even) td { background: #fffde7; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-icon">📋</div>
+    <div>
+      <h1>就労継続支援 整合チェッカー</h1>
+      <p>実績記録票（テキスト貼付）↔ 工賃明細（Excel）の自動照合｜合同会社JAPANICARE</p>
+    </div>
+  </div>
+
+  <!-- MANUAL -->
+  <div class="manual-wrap">
+    <div class="manual-toggle" onclick="toggleManual()">
+      <div class="manual-toggle-icon">📖</div>
+      <div class="manual-toggle-title">使い方マニュアル（クリックで開く）</div>
+      <div class="manual-toggle-arrow" id="manual-arrow">▶</div>
+    </div>
+    <div class="manual-body" id="manual-body">
+
+      <div class="manual-section">
+        <h3>🎯 このツールでできること</h3>
+        <p style="font-size:.82rem;color:#444;line-height:1.7;">
+          Knowbeから出力した<strong>就労継続支援提供実績記録票（PDF）</strong>と、
+          手入力で作成した<strong>工賃明細のExcelファイル</strong>を自動で照合し、
+          転記ミス・入力漏れを日付・項目レベルで検出します。<br>
+          チェック対象：開始時間 ／ 終了時間 ／ 食事提供加算 ／ 在宅就労
+        </p>
+      </div>
+
+      <div class="manual-section">
+        <h3>📋 事前準備（初回のみ）</h3>
+        <table class="manual-table">
+          <tr><th>必要なもの</th><th>確認ポイント</th></tr>
+          <tr><td>PDF閲覧アプリ</td><td>
+            <strong>Mac：</strong>標準の「プレビュー」アプリでOK<br>
+            <strong>Windows：</strong>無料の <strong>Adobe Acrobat Reader</strong> を推奨<br>
+            <span style="font-size:.75rem;color:#888;">※ EdgeやChromeの内蔵PDFビューアではうまく動かない場合があります</span>
+          </td></tr>
+          <tr><td>インターネット接続</td><td>ツール起動時に一度だけ外部ライブラリを読み込みます</td></tr>
+          <tr><td>Knowbeからダウンロードしたpdf</td><td>当月分の実績記録票（全利用者分を1ファイルでもOK）</td></tr>
+          <tr><td>工賃明細のExcelファイル（.xlsx）</td><td>利用者ごとに1ファイル。「就労時間」シートがあるもの</td></tr>
+        </table>
+      </div>
+
+      <div class="manual-section">
+        <h3>🚀 操作手順</h3>
+        <ul class="manual-steps">
+          <li>
+            <div class="manual-step-num">1</div>
+            <div>
+              <strong>PDFをアプリで開く</strong><br>
+              <strong>Mac：</strong>Finderでファイルを右クリック →「プレビューで開く」<br>
+              <strong>Windows：</strong>ファイルを右クリック →「Adobe Acrobat Readerで開く」
+            </div>
+          </li>
+          <li>
+            <div class="manual-step-num">2</div>
+            <div>
+              <strong>テキストを全選択してコピー</strong><br>
+              <strong>Mac：</strong><span class="manual-kbd">⌘</span>+<span class="manual-kbd">A</span>（全選択）→ <span class="manual-kbd">⌘</span>+<span class="manual-kbd">C</span>（コピー）<br>
+              <strong>Windows：</strong><span class="manual-kbd">Ctrl</span>+<span class="manual-kbd">A</span>（全選択）→ <span class="manual-kbd">Ctrl</span>+<span class="manual-kbd">C</span>（コピー）
+            </div>
+          </li>
+          <li>
+            <div class="manual-step-num">3</div>
+            <div>
+              <strong>Step 1 のボックスに貼り付け</strong><br>
+              このページの「Step 1」のテキストボックスをクリックし、<br>
+              <strong>Mac：</strong><span class="manual-kbd">⌘</span>+<span class="manual-kbd">V</span>　／　<strong>Windows：</strong><span class="manual-kbd">Ctrl</span>+<span class="manual-kbd">V</span> で貼り付けます。<br>
+              「○○文字を取得済み」と表示されれば成功です。
+            </div>
+          </li>
+          <li>
+            <div class="manual-step-num">4</div>
+            <div>
+              <strong>Excelファイルをドロップ</strong><br>
+              「Step 2」のエリアに工賃明細Excelファイルをドラッグ&ドロップします。複数ファイルをまとめてドロップしても構いません。
+            </div>
+          </li>
+          <li>
+            <div class="manual-step-num">5</div>
+            <div>
+              <strong>「整合チェックを実行する」ボタンを押す</strong><br>
+              数秒で照合が完了し、結果が表示されます。
+            </div>
+          </li>
+          <li>
+            <div class="manual-step-num">6</div>
+            <div>
+              <strong>エラーを確認・修正する</strong><br>
+              エラーがある利用者は赤く表示されます。日付・項目・PDF側の値・Excel側の値が一覧で確認できます。<br>
+              「エラー一覧をCSV出力」ボタンで修正リストをダウンロードできます。
+            </div>
+          </li>
+        </ul>
+        <div class="manual-note">
+          <strong>💡 ポイント：</strong>PDFは複数ページ（複数利用者分）をまとめて全選択してOKです。利用者名を自動で識別して照合します。
+        </div>
+      </div>
+
+      <div class="manual-section">
+        <h3>⚠️ よくあるエラーと対処法</h3>
+        <table class="manual-table">
+          <tr><th>エラーメッセージ</th><th>原因と対処</th></tr>
+          <tr><td>「氏名が検出できませんでした」</td><td>PDFのコピーが不完全な可能性があります。再度 全選択 → コピー を行い、貼り付け直してください。Windowsの場合はAdobe Acrobat Readerを使用しているか確認してください</td></tr>
+          <tr><td>「ExcelにあるがPDFに記録なし」</td><td>該当利用者のPDFページがコピーに含まれていない可能性があります。PDFを再確認してください</td></tr>
+          <tr><td>開始・終了時間のエラー</td><td>Excel側の手入力ミスの可能性が高いです。工賃明細の該当日付を確認してください</td></tr>
+          <tr><td>食事提供加算のエラー</td><td>実績記録票では「1」、工賃明細では「◯」で管理しています。どちらかの記入漏れを確認してください</td></tr>
+        </table>
+      </div>
+
+      <div class="manual-section">
+        <h3>🔒 プライバシーについて</h3>
+        <p style="font-size:.82rem;color:#444;line-height:1.7;">
+          このツールはすべての処理をお使いのパソコン上（ブラウザ内）で行います。
+          PDFの内容・Excelのデータはインターネット上に送信されません。安心してご使用ください。
+        </p>
+      </div>
+
+    </div><!-- /manual-body -->
+  </div><!-- /manual-wrap -->
+
+  <!-- STEP 1: PDF テキスト貼り付け -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div class="step-title">実績記録票のテキストを貼り付け</div>
+    </div>
+    <div class="paste-hint">
+      <strong>手順：</strong>
+      KnowbeからダウンロードしたPDFを <strong>macOS Preview</strong> で開く
+      → <span class="kbd">⌘A</span>（全選択）
+      → <span class="kbd">⌘C</span>（コピー）
+      → 下のボックスに <span class="kbd">⌘V</span>（貼り付け）<br>
+      <span style="color:#888">※ 全ページ一括でOK。複数利用者分をまとめて貼り付けられます。</span>
+    </div>
+    <textarea id="pdf-text" placeholder="ここにPDFからコピーしたテキストを貼り付けてください…" oninput="onPasteInput()"></textarea>
+    <div class="paste-count" id="paste-count"></div>
+  </div>
+
+  <!-- STEP 2: Excel -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div class="step-title">工賃明細 Excel を追加（複数可）</div>
+    </div>
+    <label class="drop-zone" id="excel-zone">
+      <div class="drop-icon">📊</div>
+      <div class="drop-title">Excel（.xlsx）をドロップ、またはクリックして選択</div>
+      <div class="drop-hint">利用者ごとのファイルを複数まとめて追加できます</div>
+      <div class="drop-status" id="excel-status">未選択</div>
+      <div class="file-chips" id="excel-chips"></div>
+      <input type="file" id="excel-input" accept=".xlsx,.xls" multiple>
+    </label>
+  </div>
+
+  <button class="run-btn" id="run-btn" disabled onclick="runCheck()">
+    🔍 整合チェックを実行する
+  </button>
+
+  <div id="results"></div>
+
+</div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+const excelFiles = [];
+let pastedText = '';
+
+// ================================================================
+// PASTE HANDLER
+// ================================================================
+function onPasteInput() {
+  const ta = document.getElementById('pdf-text');
+  pastedText = ta.value;
+  const lines = pastedText.split('\n').filter(l => l.trim()).length;
+  document.getElementById('paste-count').textContent =
+    pastedText.trim() ? `${pastedText.length.toLocaleString()} 文字 / 約 ${lines} 行を取得済み` : '';
+  ta.classList.toggle('has-text', pastedText.trim().length > 0);
+  updateRunBtn();
+}
+
+// ================================================================
+// EXCEL DROP
+// ================================================================
+const excelZone = document.getElementById('excel-zone');
+const excelInput = document.getElementById('excel-input');
+
+excelInput.addEventListener('change', e => {
+  if (e.target.files.length) addExcelFiles([...e.target.files]);
+});
+excelZone.addEventListener('dragover', e => { e.preventDefault(); excelZone.classList.add('drag-over'); });
+excelZone.addEventListener('dragleave', () => excelZone.classList.remove('drag-over'));
+excelZone.addEventListener('drop', e => {
+  e.preventDefault(); excelZone.classList.remove('drag-over');
+  const files = [...e.dataTransfer.files].filter(f => f.name.match(/\.xlsx?$/i));
+  if (files.length) addExcelFiles(files);
+});
+
+function addExcelFiles(files) {
+  files.forEach(f => { if (!excelFiles.find(e => e.name === f.name)) excelFiles.push(f); });
+  excelZone.classList.add('loaded');
+  document.getElementById('excel-status').textContent = `✓ ${excelFiles.length}ファイル選択済み`;
+  document.getElementById('excel-chips').innerHTML = excelFiles.map(f =>
+    `<span class="file-chip">${f.name.replace(/工賃明細\d+_/, '').replace(/\.xlsx?$/i, '')}</span>`
+  ).join('');
+  updateRunBtn();
+}
+
+function updateRunBtn() {
+  document.getElementById('run-btn').disabled = !(pastedText.trim() && excelFiles.length > 0);
+}
+
+// ================================================================
+// UTILS
+// ================================================================
+function normName(s) {
+  if (!s) return '';
+  return String(s).normalize('NFKC').replace(/[\s　様]/g, '');
+}
+function normTime(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{1,2}):(\d{2})/);
+  return m ? m[1].padStart(2,'0') + ':' + m[2] : null;
+}
+function fuzzyMatch(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  if (a.length >= 2 && b.length >= 2 && a.slice(0,2) === b.slice(0,2)) {
+    return [...a].filter(c => b.includes(c)).length >= 3;
+  }
+  return false;
+}
+const CIRCLE = new Set(['○','◯','〇','●','◉']);
+
+// ================================================================
+// PDF TEXT PARSER（タブ区切り対応版）
+// ================================================================
+function parsePastedText(rawText) {
+  // NFKC正規化（Kangxi radicals → 標準漢字）
+  const text = rawText.normalize('NFKC');
+  const lines = text.split('\n');
+  const persons = {};
+  const personBoundaries = []; // { name, lineIdx }
+
+  // ── 名前検出 ──────────────────────────────────────────────
+  // Knowbe PDFをPreviewでコピーするとタブ区切りになる。
+  // 行フォーマット例:
+  //   番号\t1012392328\t支給決定障害者氏名\t伊藤 由希子\t事業所番号\t0110104866
+  // 10桁の受給者番号をアンカーにして、その2セル後を氏名として取得する。
+  // ラベル文字の文字コードに依存しないため、Kangxi radical問題を回避できる。
+  const NAME_RE = /^([\u4e00-\u9fff\u3040-\u30ff]{1,4})[\s　]([\u4e00-\u9fff\u3040-\u30ff]{1,8})$/;
+
+  for (let i = 0; i < lines.length; i++) {
+    const cells = lines[i].split('\t');
+    for (let ci = 0; ci < cells.length - 2; ci++) {
+      if (!/^\d{10}$/.test(cells[ci].trim())) continue;
+      const cand = (cells[ci + 2] || '').trim();
+      if (NAME_RE.test(cand)) {
+        personBoundaries.push({ name: normName(cand), lineIdx: i });
+        break; // 1行に1人
+      }
+    }
+  }
+
+  if (personBoundaries.length === 0) {
+    // デバッグ用: 何が入っているか見せる
+    const has10d = lines.some(l => /\d{10}/.test(l));
+    const hasKanji = /[\u4e00-\u9fff]/.test(text);
+    const preview = text.replace(/\t/g, '→').substring(0, 300);
+    return {
+      persons: {},
+      warn: `氏名が検出できませんでした。\n` +
+            `（文字数: ${text.length}、10桁番号: ${has10d ? 'あり' : 'なし'}、漢字: ${hasKanji ? 'あり' : 'なし'}）\n\n` +
+            `最初の300文字（タブ→で表示）:\n${preview}`
+    };
+  }
+
+  // ── 各人のセクションからデータ行を抽出 ─────────────────────
+  for (let pi = 0; pi < personBoundaries.length; pi++) {
+    const startLine = personBoundaries[pi].lineIdx;
+    const endLine   = pi + 1 < personBoundaries.length
+      ? personBoundaries[pi + 1].lineIdx
+      : lines.length;
+    const sectionLines = lines.slice(startLine, endLine);
+    const records = extractTextRecords(sectionLines);
+    if (records.length > 0) {
+      persons[personBoundaries[pi].name] = records;
+    }
+  }
+
+  if (Object.keys(persons).length === 0) {
+    return { persons: {}, warn: '名前は検出できましたが実績データが取得できませんでした。' };
+  }
+  return { persons, warn: null };
+}
+
+function extractTextRecords(sectionLines) {
+  // タブ区切り列インデックス（Knowbe PDF → Preview コピー形式）:
+  //   [0]日付  [1]曜日  [2]サービス状況  [3]開始時間  [4]終了時間
+  //   [5]送迎往 [6]送迎復 [7]訪問支援  [8]食事提供加算  ...  末尾=備考
+  const records = [];
+  const DOW = new Set([...'月火水木金土日']);
+
+  for (const rawLine of sectionLines) {
+    const cells = rawLine.split('\t');
+    const day = parseInt(cells[0]);
+    if (!day || day < 1 || day > 31) continue;
+    if (!DOW.has(cells[1])) continue;
+
+    const start = normTime(cells[3]);
+    const end   = normTime(cells[4]);
+    if (!start || !end) continue;
+
+    // 食事提供加算: [8]列が "1"
+    const mealAdd = (cells[8] || '').trim() === '1';
+    // 在宅就労: いずれかのセルに "在宅" を含む
+    const remote = cells.some(c => c && c.includes('在宅'));
+
+    if (!records.find(r => r.day === day)) {
+      records.push({ day, start, end, meal: mealAdd, remote });
+    }
+  }
+
+  records.sort((a, b) => a.day - b.day);
+  return records;
+}
+
+// ================================================================
+// EXCEL PARSER
+// ================================================================
+async function parseExcel(file) {
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(new Uint8Array(ab), { type: 'array', cellDates: true, raw: false });
+  const sheetName = wb.SheetNames.find(n => n.includes('就労')) || wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+  const name = normName(data[0]?.[1]);
+  const records = [];
+
+  for (let i = 2; i < data.length; i++) {
+    const row = data[i];
+    if (!row || row[1] === null || row[1] === undefined) continue;
+    let day;
+    if (row[1] instanceof Date) { day = row[1].getDate(); }
+    else if (typeof row[1] === 'number') { const d = XLSX.SSF.parse_date_code(row[1]); day = d ? d.d : null; }
+    else continue;
+    if (!day) continue;
+
+    const start  = excelTime(row[4]);
+    const end    = excelTime(row[5]);
+    const meal   = CIRCLE.has(String(row[8]  || '').trim().normalize('NFKC'));
+    const remote = CIRCLE.has(String(row[11] || '').trim().normalize('NFKC'));
+
+    if (start || end) records.push({ day, start, end, meal, remote });
+  }
+
+  return { name, records, sheetName };
+}
+
+function excelTime(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (val instanceof Date) return String(val.getHours()).padStart(2,'0') + ':' + String(val.getMinutes()).padStart(2,'0');
+  if (typeof val === 'number' && val > 0 && val < 1) {
+    const t = Math.round(val * 24 * 60);
+    return String(Math.floor(t/60)).padStart(2,'0') + ':' + String(t%60).padStart(2,'0');
+  }
+  if (typeof val === 'string') {
+    const m = val.match(/(\d{1,2}):(\d{2})/);
+    if (m) return m[1].padStart(2,'0') + ':' + m[2];
+  }
+  return null;
+}
+
+// ================================================================
+// COMPARE
+// ================================================================
+function compare(pdfRecs, excelRecs) {
+  const errors = [];
+  const pm = Object.fromEntries(pdfRecs.map(r => [r.day, r]));
+  const em = Object.fromEntries(excelRecs.map(r => [r.day, r]));
+  const days = [...new Set([...Object.keys(pm), ...Object.keys(em)])].map(Number).sort((a,b)=>a-b);
+
+  for (const day of days) {
+    const p = pm[day], e = em[day];
+    if (p && !e) { errors.push({ day, field: '利用記録', pdf: `${p.start}〜${p.end}`, excel: '記録なし', type: 'pdf' }); continue; }
+    if (!p && e) { errors.push({ day, field: '利用記録', pdf: '記録なし', excel: `${e.start}〜${e.end}`, type: 'excel' }); continue; }
+    if (!p || !e) continue;
+    if (p.start !== e.start) errors.push({ day, field: '開始時間',    pdf: p.start||'空白', excel: e.start||'空白', type: 'mismatch' });
+    if (p.end   !== e.end  ) errors.push({ day, field: '終了時間',    pdf: p.end  ||'空白', excel: e.end  ||'空白', type: 'mismatch' });
+    if (p.meal  !== e.meal ) errors.push({ day, field: '食事提供加算', pdf: p.meal ? '加算あり（1）' : 'なし', excel: e.meal ? '○' : 'なし', type: 'mismatch' });
+    if (p.remote !== e.remote) errors.push({ day, field: '在宅就労',  pdf: p.remote ? '在宅就労' : 'なし', excel: e.remote ? '○' : 'なし', type: 'mismatch' });
+  }
+  return errors;
+}
+
+// ================================================================
+// MAIN
+// ================================================================
+async function runCheck() {
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = `<div class="card"><div class="processing"><div class="spinner"></div><div class="proc-text" id="proc-msg">テキストを解析中...</div></div></div>`;
+  const setMsg = m => { const el = document.getElementById('proc-msg'); if (el) el.textContent = m; };
+
+  try {
+    setMsg('PDFテキストを解析中...');
+    const { persons: pdfPersons, warn } = parsePastedText(pastedText);
+
+    setMsg('Excelを解析中...');
+    const excelResults = [];
+    for (const f of excelFiles) excelResults.push(await parseExcel(f));
+
+    setMsg('照合中...');
+    renderResults(pdfPersons, excelResults, warn);
+
+  } catch (err) {
+    resultsEl.innerHTML = `<div class="card"><div class="alert-err">⚠️ エラーが発生しました: ${err.message}</div></div>`;
+    console.error(err);
+  }
+}
+
+// ================================================================
+// RENDER
+// ================================================================
+function renderResults(pdfPersons, excelResults, warn) {
+  const res = document.getElementById('results');
+  const pdfNameList = Object.keys(pdfPersons);
+
+  const matched = [];
+  const unmatchedPdf = new Set(pdfNameList);
+  const unmatchedExcel = [];
+
+  for (const ex of excelResults) {
+    const pKey = pdfNameList.find(p => fuzzyMatch(p, ex.name));
+    if (pKey) { matched.push({ name: pKey, pdf: pdfPersons[pKey], excel: ex }); unmatchedPdf.delete(pKey); }
+    else unmatchedExcel.push(ex);
+  }
+
+  const comparisons = matched.map(m => ({ ...m, errors: compare(m.pdf, m.excel.records) }));
+  const totalErrors = comparisons.reduce((s, c) => s + c.errors.length, 0);
+  const okPersons   = comparisons.filter(c => c.errors.length === 0).length;
+
+  let html = '';
+
+  // Warning
+  if (warn) html += `<div class="alert-warn">⚠️ ${warn}</div>`;
+
+  // Summary
+  const dbgId = 'namedbg-' + Date.now();
+  html += `<div class="card">
+    <div class="card-title">📊 チェック結果サマリー</div>
+    <div class="summary-row">
+      <div class="stat blue"><div class="stat-n">${comparisons.length}</div><div class="stat-l">照合した人数</div></div>
+      <div class="stat green"><div class="stat-n">${okPersons}</div><div class="stat-l">問題なし</div></div>
+      <div class="stat ${totalErrors > 0 ? 'red' : 'green'}"><div class="stat-n">${totalErrors}</div><div class="stat-l">エラー件数</div></div>
+      <div class="stat yellow"><div class="stat-n">${unmatchedPdf.size + unmatchedExcel.length}</div><div class="stat-l">未照合</div></div>
+    </div>
+    ${totalErrors === 0 && unmatchedPdf.size === 0 && comparisons.length > 0
+      ? '<div style="text-align:center;padding:8px;color:#27ae60;font-weight:bold;">✅ 照合したすべての記録が一致しています</div>'
+      : ''
+    }
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+      <button class="export-btn" onclick="exportCSV()">📥 エラー一覧をCSV出力</button>
+      <span class="debug-toggle" onclick="toggleDebug('${dbgId}')">▼ 名前マッチング確認</span>
+    </div>
+    <div class="debug-box" id="${dbgId}">PDF抽出名:\n${pdfNameList.map(n=>'  ・'+n).join('\n')||'  （なし）'}\n\nExcel名:\n${excelResults.map(e=>'  ・'+e.name+' ['+e.sheetName+']').join('\n')||'  （なし）'}</div>
+  </div>`;
+
+  // Per-person
+  html += `<div class="card"><div class="card-title">👤 利用者別チェック結果</div>`;
+  for (let i = 0; i < comparisons.length; i++) {
+    const c = comparisons[i];
+    const hasErr = c.errors.length > 0;
+    const pId = `pc-${i}`;
+
+    let bodyHtml = hasErr
+      ? `<table class="err-table"><thead><tr><th>日付</th><th>項目</th><th>📄 実績記録票（テキスト）</th><th>📊 工賃明細（Excel）</th></tr></thead><tbody>
+         ${c.errors.map(err => {
+           const tc = err.type === 'mismatch' ? 'tag-mismatch' : err.type === 'pdf' ? 'tag-pdf' : 'tag-excel';
+           return `<tr><td><strong>${err.day}日</strong></td><td><span class="tag ${tc}">${err.field}</span></td><td class="val-pdf">${err.pdf}</td><td class="val-excel">${err.excel}</td></tr>`;
+         }).join('')}
+         </tbody></table>`
+      : `<div class="ok-msg"><div class="ok-i">✅</div>エラーなし（テキスト:${c.pdf.length}日 / Excel:${c.excel.records.length}日 — すべて一致）</div>`;
+
+    const dbgId2 = `dbg-${i}`;
+    const pdfDbg = c.pdf.map(r => `${String(r.day).padStart(2,'0')}日: ${r.start}〜${r.end} | 食:${r.meal?'○':'-'} | 在宅:${r.remote?'○':'-'}`).join('\n');
+    const exlDbg = c.excel.records.map(r => `${String(r.day).padStart(2,'0')}日: ${r.start}〜${r.end} | 食:${r.meal?'○':'-'} | 在宅:${r.remote?'○':'-'}`).join('\n');
+
+    html += `<div class="person-card">
+      <div class="person-header" onclick="togglePerson('${pId}')">
+        <div class="person-badge ${hasErr?'badge-err':'badge-ok'}">${hasErr?'✗':'✓'}</div>
+        <div class="person-name">${c.name}</div>
+        <div class="person-meta">${hasErr ? `<span style="color:#c0392b">❌ ${c.errors.length}件</span>` : '<span style="color:#27ae60">エラーなし</span>'} &nbsp;·&nbsp; テキスト:${c.pdf.length}日 / Excel:${c.excel.records.length}日</div>
+        <div class="person-arrow" id="arr-${pId}">${hasErr?'▼':'▶'}</div>
+      </div>
+      <div class="person-body ${hasErr?'open':''}" id="${pId}">
+        ${bodyHtml}
+        <span class="debug-toggle" onclick="toggleDebug('${dbgId2}')">▼ 解析データ（デバッグ）</span>
+        <div class="debug-box" id="${dbgId2}">== テキスト抽出 ==\n${pdfDbg}\n\n== Excel抽出（${c.excel.sheetName}）==\n${exlDbg}</div>
+      </div>
+    </div>`;
+  }
+  html += `</div>`;
+
+  // Unmatched
+  if (unmatchedPdf.size > 0 || unmatchedExcel.length > 0) {
+    html += `<div class="card"><div class="card-title">⚠️ 未照合</div>`;
+    for (const n of unmatchedPdf) html += `<div class="unmatched-item">📄 「${n}」— テキストにあるが対応するExcelファイルなし</div>`;
+    for (const ex of unmatchedExcel) html += `<div class="unmatched-item">📊 「${ex.name}」— ExcelにあるがPDFテキストに記録なし</div>`;
+    html += `</div>`;
+  }
+
+  res.innerHTML = html;
+  window._checkData = comparisons;
+}
+
+function toggleManual() {
+  const body  = document.getElementById('manual-body');
+  const arrow = document.getElementById('manual-arrow');
+  const open  = body.classList.toggle('open');
+  arrow.classList.toggle('open', open);
+  arrow.textContent = open ? '▼' : '▶';
+}
+function togglePerson(id) {
+  const body = document.getElementById(id);
+  const arr  = document.getElementById('arr-' + id);
+  const open = body.classList.toggle('open');
+  arr.textContent = open ? '▼' : '▶';
+}
+function toggleDebug(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+function exportCSV() {
+  const data = window._checkData;
+  if (!data || !data.some(c => c.errors.length > 0)) { alert('エラーがないためCSVは空になります。'); return; }
+  const rows = [['氏名','日付','項目','PDF値','Excel値']];
+  for (const c of data) for (const err of c.errors) rows.push([c.name, `${err.day}日`, err.field, err.pdf, err.excel]);
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `整合エラー_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
