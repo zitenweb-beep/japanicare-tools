@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>職員考察ツール | JAPANICARE</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #eef2f7;
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+      color: #111827;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 640px;
+      margin: 0 auto 28px;
+    }
+    .header-left  { display: flex; align-items: center; gap: 10px; }
+    .back {
+      font-size: 13px; color: #6b7280;
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
+    .back:hover { background: #f3f4f6; }
+    .brand      { font-size: 16px; font-weight: 800; color: #1d4ed8; }
+    .brand-sub  { font-size: 12px; color: #6b7280; }
+    .logout {
+      font-size: 13px; color: #6b7280;
+      text-decoration: none;
+      padding: 6px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
+    .logout:hover { background: #f3f4f6; }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 640px;
+      margin: 0 auto 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .card-title {
+      font-size: 15px; font-weight: 700; color: #374151;
+      margin-bottom: 20px; padding-bottom: 12px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media(max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+    .form-group        { margin-bottom: 16px; }
+    .form-group.full   { grid-column: 1 / -1; }
+    label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: #374151; margin-bottom: 6px;
+    }
+    label .req { color: #ef4444; font-size: 11px; margin-left: 4px; }
+    input[type="text"], input[type="date"], input[type="url"] {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid #d1d5db; border-radius: 9px;
+      font-size: 15px; color: #111; outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #1d4ed8; }
+
+    #btn-generate {
+      width: 100%; padding: 15px;
+      background: #1d4ed8; color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: background 0.15s; margin-top: 4px;
+    }
+    #btn-generate:hover:not(:disabled) { background: #1e40af; }
+    #btn-generate:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    #loading { display: none; text-align: center; padding: 20px 0 8px; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #e0e7ff; border-top-color: #1d4ed8;
+      border-radius: 50%; animation: spin 0.9s linear infinite;
+      margin: 0 auto 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #step-label  { font-size: 14px; color: #4b5563; font-weight: 500; }
+    .time-note   { font-size: 12px; color: #9ca3af; margin-top: 6px; }
+
+    #error-box {
+      display: none;
+      background: #fef2f2; border: 1.5px solid #fecaca;
+      color: #dc2626; border-radius: 10px;
+      padding: 14px 18px; font-size: 13px;
+      line-height: 1.6; white-space: pre-wrap; margin-top: 16px;
+    }
+
+    #result-area { display: none; }
+    .result-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 12px;
+    }
+    .result-title { font-size: 15px; font-weight: 700; color: #374151; }
+    .char-count {
+      font-size: 13px; font-weight: 600;
+      padding: 4px 12px; border-radius: 20px;
+    }
+    .char-ok   { background: #dcfce7; color: #16a34a; }
+    .char-warn { background: #fef9c3; color: #b45309; }
+    .char-over { background: #fee2e2; color: #dc2626; }
+
+    #kansan-text {
+      width: 100%; padding: 14px 16px;
+      border: 1.5px solid #d1d5db; border-radius: 10px;
+      font-size: 15px; line-height: 1.75; color: #111;
+      resize: vertical; min-height: 140px;
+      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+      outline: none; transition: border-color 0.15s;
+    }
+    #kansan-text:focus { border-color: #1d4ed8; }
+
+    #btn-copy {
+      width: 100%; margin-top: 12px; padding: 13px;
+      background: #059669; color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    #btn-copy:hover { background: #047857; }
+    #copy-ok {
+      display: none; text-align: center;
+      color: #059669; font-size: 13px; font-weight: 600; margin-top: 8px;
+    }
+
+    .transcript-toggle {
+      display: block; width: 100%; background: none;
+      border: 1.5px solid #e5e7eb; border-radius: 9px;
+      padding: 10px 16px; font-size: 13px; color: #6b7280;
+      cursor: pointer; text-align: left; margin-top: 16px;
+      font-family: inherit; transition: background 0.1s;
+    }
+    .transcript-toggle:hover { background: #f9fafb; }
+    #transcript-box {
+      display: none; margin-top: 12px;
+      padding: 14px 16px; background: #f9fafb;
+      border: 1px solid #e5e7eb; border-radius: 10px;
+      font-size: 13px; color: #4b5563; line-height: 1.7;
+      white-space: pre-wrap; max-height: 240px; overflow-y: auto;
+    }
+
+    #btn-reset {
+      display: none; width: 100%; margin-top: 12px; padding: 11px;
+      background: none; border: 1.5px solid #d1d5db; border-radius: 10px;
+      font-size: 14px; color: #6b7280; cursor: pointer; font-family: inherit;
+      transition: background 0.1s;
+    }
+    #btn-reset:hover { background: #f3f4f6; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <a href="/" class="back">← ツール一覧</a>
+      <div>
+        <div class="brand">JAPANICARE</div>
+        <div class="brand-sub">職員考察 自動生成ツール</div>
+      </div>
+    </div>
+    <a href="/logout" class="logout">ログアウト</a>
+  </header>
+
+  <!-- 入力フォーム -->
+  <div class="card" id="form-card">
+    <div class="card-title">① 情報を入力</div>
+    <div class="form-row">
+      <div class="form-group full">
+        <label for="url">stand.fm URL <span class="req">必須</span></label>
+        <input type="url" id="url" placeholder="https://stand.fm/episodes/..." autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label for="user_code">利用者コード <span class="req">必須</span></label>
+        <input type="text" id="user_code" placeholder="例：利用者A" value="利用者A">
+      </div>
+      <div class="form-group">
+        <label for="date">支援日 <span class="req">必須</span></label>
+        <input type="date" id="date">
+      </div>
+      <div class="form-group full">
+        <label for="staff_code">担当職員コード</label>
+        <input type="text" id="staff_code" placeholder="例：職員B">
+      </div>
+    </div>
+
+    <button id="btn-generate" onclick="startGenerate()">職員考察を生成する</button>
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <div id="step-label">処理を開始しています...</div>
+      <div class="time-note">文字起こしに2〜5分かかることがあります</div>
+    </div>
+    <div id="error-box"></div>
+  </div>
+
+  <!-- 結果エリア -->
+  <div class="card" id="result-area">
+    <div class="result-header">
+      <div class="result-title">② 生成された職員考察</div>
+      <div class="char-count" id="char-badge">0字</div>
+    </div>
+
+    <textarea id="kansan-text" oninput="updateCharCount()" rows="6"></textarea>
+    <button id="btn-copy" onclick="copyKansan()">ノウビーにコピーする</button>
+    <div id="copy-ok">✓ クリップボードにコピーしました</div>
+
+    <button class="transcript-toggle" onclick="toggleTranscript()">
+      ▶ 文字起こし原文を確認する
+    </button>
+    <div id="transcript-box"></div>
+
+    <button id="btn-reset" onclick="resetForm()">別の音声を処理する</button>
+  </div>
+
+  <script>
+    document.getElementById('date').valueAsDate = new Date();
+    let pollTimer = null;
+
+    async function startGenerate() {
+      const url       = document.getElementById('url').value.trim();
+      const userCode  = document.getElementById('user_code').value.trim();
+      const dateStr   = document.getElementById('date').value;
+      const staffCode = document.getElementById('staff_code').value.trim();
+
+      if (!url)      { alert('stand.fm の URL を入力してください'); return; }
+      if (!userCode) { alert('利用者コードを入力してください'); return; }
+      if (!dateStr)  { alert('支援日を入力してください'); return; }
+
+      setLoading(true);
+      hideError();
+      document.getElementById('result-area').style.display = 'none';
+      document.getElementById('btn-reset').style.display   = 'none';
+
+      try {
+        const res  = await fetch('/kansan/start', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url, user_code: userCode, date: dateStr, staff_code: staffCode})
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.error || 'エラーが発生しました'); setLoading(false); return; }
+        pollTimer = setInterval(() => pollStatus(data.job_id), 3000);
+      } catch(e) {
+        showError('通信エラー: ' + e.message); setLoading(false);
+      }
+    }
+
+    async function pollStatus(jobId) {
+      try {
+        const res  = await fetch('/kansan/status/' + jobId);
+        const data = await res.json();
+        if (data.step) document.getElementById('step-label').textContent = data.step;
+
+        if (data.status === 'done') {
+          clearInterval(pollTimer); setLoading(false); showResult(data.result);
+        } else if (data.status === 'error') {
+          clearInterval(pollTimer); setLoading(false); showError(data.error || '不明なエラー');
+        }
+      } catch(e) { /* ネットワークエラーは次のポーリングで再試行 */ }
+    }
+
+    function showResult(result) {
+      document.getElementById('kansan-text').value = result.kansan;
+      document.getElementById('transcript-box').textContent = result.transcript;
+      document.getElementById('result-area').style.display = 'block';
+      document.getElementById('btn-reset').style.display   = 'block';
+      updateCharCount();
+      document.getElementById('result-area').scrollIntoView({behavior: 'smooth'});
+    }
+
+    function updateCharCount() {
+      const count = document.getElementById('kansan-text').value.length;
+      const badge = document.getElementById('char-badge');
+      badge.textContent = count + '字';
+      badge.className   = 'char-count';
+      if      (count >= 120 && count <= 180) badge.classList.add('char-ok');
+      else if (count > 180)                  badge.classList.add('char-over');
+      else                                   badge.classList.add('char-warn');
+    }
+
+    async function copyKansan() {
+      const text = document.getElementById('kansan-text').value;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch(e) {
+        document.getElementById('kansan-text').select();
+        document.execCommand('copy');
+      }
+      document.getElementById('copy-ok').style.display = 'block';
+      setTimeout(() => { document.getElementById('copy-ok').style.display = 'none'; }, 2500);
+    }
+
+    function toggleTranscript() {
+      const box = document.getElementById('transcript-box');
+      const btn = document.querySelector('.transcript-toggle');
+      const open = box.style.display === 'block';
+      box.style.display = open ? 'none' : 'block';
+      btn.textContent   = open ? '▶ 文字起こし原文を確認する' : '▼ 文字起こし原文を閉じる';
+    }
+
+    function resetForm() {
+      document.getElementById('url').value = '';
+      document.getElementById('result-area').style.display  = 'none';
+      document.getElementById('btn-reset').style.display    = 'none';
+      document.getElementById('transcript-box').style.display = 'none';
+      document.querySelector('.transcript-toggle').textContent = '▶ 文字起こし原文を確認する';
+      document.getElementById('copy-ok').style.display = 'none';
+      window.scrollTo({top: 0, behavior: 'smooth'});
+    }
+
+    function setLoading(on) {
+      document.getElementById('loading').style.display    = on ? 'block' : 'none';
+      document.getElementById('btn-generate').disabled   = on;
+    }
+    function showError(msg) {
+      const b = document.getElementById('error-box');
+      b.textContent = msg; b.style.display = 'block';
+    }
+    function hideError() {
+      document.getElementById('error-box').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

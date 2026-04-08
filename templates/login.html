@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン | 職員考察ツール</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
+      background: #eef2f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .brand-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #1d4ed8;
+      letter-spacing: 0.03em;
+    }
+    .brand-sub {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 6px;
+    }
+    .error-box {
+      background: #fef2f2;
+      border: 1.5px solid #fecaca;
+      color: #dc2626;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+    input[type="password"] {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.15s;
+      color: #111;
+    }
+    input[type="password"]:focus { border-color: #1d4ed8; }
+    button {
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #1e40af; }
+    button:active { background: #1e3a8a; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-name">JAPANICARE</div>
+      <div class="brand-sub">職員考察 自動生成ツール</div>
+    </div>
+
+    {% if error %}
+    <div class="error-box">{{ error }}</div>
+    {% endif %}
+
+    <form method="post">
+      <label for="pw">パスワード</label>
+      <input type="password" id="pw" name="password" autofocus
+             placeholder="事業所パスワードを入力">
+      <button type="submit">ログイン</button>
+    </form>
+  </div>
+</body>
+</html>
