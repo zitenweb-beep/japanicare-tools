@@ -15,7 +15,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'change-this-in-production')
 
 # パスワードとAPIキーの取得（環境変数優先、なければ '0111'）
 APP_PASSWORD = os.environ.get('APP_PASSWORD', '0111')
-ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '0111')
+ANTHROPIC_KEY = "sk-ant-xxxxxxxxxxxxxxxxxxxx"
 
 # ── ジョブストア ──────────────────────────────────────────────────
 jobs: dict[str, dict] = {}
