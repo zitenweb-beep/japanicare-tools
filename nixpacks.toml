@@ -1,2 +1,5 @@
 [phases.setup]
-nixPkgs = ["...", "ffmpeg"]
+nixPkgs = ["python311", "ffmpeg"]
+
+[variables]
+PATH = "/usr/bin:/bin:/usr/local/bin:$PATH"
