@@ -13,8 +13,8 @@ import anthropic
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-in-production')
 
-APP_PASSWORD = os.environ.get('APP_PASSWORD', '0111')
-ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '0111')
+APP_PASSWORD = os.environ.get('APP_PASSWORD', '0000')
+ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '0000')
 
 # ── ジョブストア ──────────────────────────────────────────────────
 jobs: dict[str, dict] = {}
