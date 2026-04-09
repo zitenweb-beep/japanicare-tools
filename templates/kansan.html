@@ -15,38 +15,28 @@
     }
 
     header {
-      display: flex;
-      align-items: center;
+      display: flex; align-items: center;
       justify-content: space-between;
-      max-width: 640px;
-      margin: 0 auto 28px;
+      max-width: 640px; margin: 0 auto 28px;
     }
-    .header-left  { display: flex; align-items: center; gap: 10px; }
+    .header-left { display: flex; align-items: center; gap: 10px; }
     .back {
       font-size: 13px; color: #6b7280;
-      text-decoration: none;
-      padding: 6px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      text-decoration: none; padding: 6px 12px;
+      border: 1px solid #d1d5db; border-radius: 8px;
     }
     .back:hover { background: #f3f4f6; }
-    .brand      { font-size: 16px; font-weight: 800; color: #1d4ed8; }
-    .brand-sub  { font-size: 12px; color: #6b7280; }
+    .brand     { font-size: 16px; font-weight: 800; color: #1d4ed8; }
+    .brand-sub { font-size: 12px; color: #6b7280; }
     .logout {
-      font-size: 13px; color: #6b7280;
-      text-decoration: none;
-      padding: 6px 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      font-size: 13px; color: #6b7280; text-decoration: none;
+      padding: 6px 14px; border: 1px solid #d1d5db; border-radius: 8px;
     }
     .logout:hover { background: #f3f4f6; }
 
     .card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 28px;
-      max-width: 640px;
-      margin: 0 auto 20px;
+      background: #fff; border-radius: 16px; padding: 28px;
+      max-width: 640px; margin: 0 auto 20px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     }
     .card-title {
@@ -57,8 +47,8 @@
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     @media(max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
-    .form-group        { margin-bottom: 16px; }
-    .form-group.full   { grid-column: 1 / -1; }
+    .form-group { margin-bottom: 16px; }
+    .form-group.full { grid-column: 1 / -1; }
     label {
       display: block; font-size: 13px; font-weight: 600;
       color: #374151; margin-bottom: 6px;
@@ -90,8 +80,8 @@
       margin: 0 auto 14px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #step-label  { font-size: 14px; color: #4b5563; font-weight: 500; }
-    .time-note   { font-size: 12px; color: #9ca3af; margin-top: 6px; }
+    #step-label { font-size: 14px; color: #4b5563; font-weight: 500; }
+    .time-note  { font-size: 12px; color: #9ca3af; margin-top: 6px; }
 
     #error-box {
       display: none;
@@ -101,12 +91,27 @@
       line-height: 1.6; white-space: pre-wrap; margin-top: 16px;
     }
 
-    #result-area { display: none; }
-    .result-header {
-      display: flex; align-items: center;
-      justify-content: space-between; margin-bottom: 12px;
+    /* ── 複数利用者カード ── */
+    #results-area { display: none; }
+    .results-header {
+      font-size: 15px; font-weight: 700; color: #374151;
+      max-width: 640px; margin: 0 auto 12px;
     }
-    .result-title { font-size: 15px; font-weight: 700; color: #374151; }
+
+    .user-card {
+      background: #fff; border-radius: 16px; padding: 24px 28px;
+      max-width: 640px; margin: 0 auto 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .user-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 14px;
+    }
+    .user-name {
+      font-size: 15px; font-weight: 700; color: #1d4ed8;
+      background: #eff6ff; padding: 4px 14px;
+      border-radius: 20px;
+    }
     .char-count {
       font-size: 13px; font-weight: 600;
       padding: 4px 12px; border-radius: 20px;
@@ -115,52 +120,57 @@
     .char-warn { background: #fef9c3; color: #b45309; }
     .char-over { background: #fee2e2; color: #dc2626; }
 
-    #kansan-text {
+    .kansan-textarea {
       width: 100%; padding: 14px 16px;
       border: 1.5px solid #d1d5db; border-radius: 10px;
       font-size: 15px; line-height: 1.75; color: #111;
-      resize: vertical; min-height: 140px;
+      resize: vertical; min-height: 130px;
       font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
       outline: none; transition: border-color 0.15s;
     }
-    #kansan-text:focus { border-color: #1d4ed8; }
+    .kansan-textarea:focus { border-color: #1d4ed8; }
 
-    #btn-copy {
-      width: 100%; margin-top: 12px; padding: 13px;
+    .btn-copy {
+      width: 100%; margin-top: 10px; padding: 12px;
       background: #059669; color: #fff;
       border: none; border-radius: 10px;
-      font-size: 15px; font-weight: 700;
+      font-size: 14px; font-weight: 700;
       cursor: pointer; transition: background 0.15s;
     }
-    #btn-copy:hover { background: #047857; }
-    #copy-ok {
+    .btn-copy:hover { background: #047857; }
+    .copy-ok {
       display: none; text-align: center;
-      color: #059669; font-size: 13px; font-weight: 600; margin-top: 8px;
+      color: #059669; font-size: 13px; font-weight: 600; margin-top: 6px;
     }
 
+    /* ── 文字起こし ── */
     .transcript-toggle {
       display: block; width: 100%; background: none;
       border: 1.5px solid #e5e7eb; border-radius: 9px;
       padding: 10px 16px; font-size: 13px; color: #6b7280;
-      cursor: pointer; text-align: left; margin-top: 16px;
+      cursor: pointer; text-align: left;
+      max-width: 640px; margin: 0 auto 12px;
       font-family: inherit; transition: background 0.1s;
     }
     .transcript-toggle:hover { background: #f9fafb; }
     #transcript-box {
-      display: none; margin-top: 12px;
+      display: none;
       padding: 14px 16px; background: #f9fafb;
       border: 1px solid #e5e7eb; border-radius: 10px;
       font-size: 13px; color: #4b5563; line-height: 1.7;
       white-space: pre-wrap; max-height: 240px; overflow-y: auto;
+      max-width: 640px; margin: 0 auto 16px;
     }
 
     #btn-reset {
-      display: none; width: 100%; margin-top: 12px; padding: 11px;
+      display: none; width: 100%; max-width: 640px;
+      margin: 0 auto 0; padding: 11px;
       background: none; border: 1.5px solid #d1d5db; border-radius: 10px;
       font-size: 14px; color: #6b7280; cursor: pointer; font-family: inherit;
-      transition: background 0.1s;
+      transition: background 0.1s; display: none;
     }
     #btn-reset:hover { background: #f3f4f6; }
+    .reset-wrap { max-width: 640px; margin: 0 auto; }
   </style>
 </head>
 <body>
@@ -177,7 +187,7 @@
   </header>
 
   <!-- 入力フォーム -->
-  <div class="card" id="form-card">
+  <div class="card">
     <div class="card-title">① 情報を入力</div>
     <div class="form-row">
       <div class="form-group full">
@@ -185,14 +195,10 @@
         <input type="url" id="url" placeholder="https://stand.fm/episodes/..." autocomplete="off">
       </div>
       <div class="form-group">
-        <label for="user_code">利用者コード <span class="req">必須</span></label>
-        <input type="text" id="user_code" placeholder="例：利用者A" value="利用者A">
-      </div>
-      <div class="form-group">
         <label for="date">支援日 <span class="req">必須</span></label>
         <input type="date" id="date">
       </div>
-      <div class="form-group full">
+      <div class="form-group">
         <label for="staff_code">担当職員コード</label>
         <input type="text" id="staff_code" placeholder="例：職員B">
       </div>
@@ -208,23 +214,19 @@
     <div id="error-box"></div>
   </div>
 
-  <!-- 結果エリア -->
-  <div class="card" id="result-area">
-    <div class="result-header">
-      <div class="result-title">② 生成された職員考察</div>
-      <div class="char-count" id="char-badge">0字</div>
-    </div>
-
-    <textarea id="kansan-text" oninput="updateCharCount()" rows="6"></textarea>
-    <button id="btn-copy" onclick="copyKansan()">ノウビーにコピーする</button>
-    <div id="copy-ok">✓ クリップボードにコピーしました</div>
+  <!-- 結果エリア（複数利用者） -->
+  <div id="results-area">
+    <div class="results-header">② 生成された職員考察</div>
+    <div id="cards-container"></div>
 
     <button class="transcript-toggle" onclick="toggleTranscript()">
       ▶ 文字起こし原文を確認する
     </button>
     <div id="transcript-box"></div>
 
-    <button id="btn-reset" onclick="resetForm()">別の音声を処理する</button>
+    <div class="reset-wrap">
+      <button id="btn-reset" onclick="resetForm()">別の音声を処理する</button>
+    </div>
   </div>
 
   <script>
@@ -233,24 +235,23 @@
 
     async function startGenerate() {
       const url       = document.getElementById('url').value.trim();
-      const userCode  = document.getElementById('user_code').value.trim();
       const dateStr   = document.getElementById('date').value;
       const staffCode = document.getElementById('staff_code').value.trim();
 
-      if (!url)      { alert('stand.fm の URL を入力してください'); return; }
-      if (!userCode) { alert('利用者コードを入力してください'); return; }
-      if (!dateStr)  { alert('支援日を入力してください'); return; }
+      if (!url)     { alert('stand.fm の URL を入力してください'); return; }
+      if (!dateStr) { alert('支援日を入力してください'); return; }
 
       setLoading(true);
       hideError();
-      document.getElementById('result-area').style.display = 'none';
-      document.getElementById('btn-reset').style.display   = 'none';
+      document.getElementById('results-area').style.display = 'none';
+      document.getElementById('cards-container').innerHTML   = '';
+      document.getElementById('btn-reset').style.display    = 'none';
 
       try {
         const res  = await fetch('/kansan/start', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({url, user_code: userCode, date: dateStr, staff_code: staffCode})
+          body: JSON.stringify({url, date: dateStr, staff_code: staffCode})
         });
         const data = await res.json();
         if (!res.ok) { showError(data.error || 'エラーが発生しました'); setLoading(false); return; }
@@ -267,42 +268,66 @@
         if (data.step) document.getElementById('step-label').textContent = data.step;
 
         if (data.status === 'done') {
-          clearInterval(pollTimer); setLoading(false); showResult(data.result);
+          clearInterval(pollTimer); setLoading(false); showResults(data.result);
         } else if (data.status === 'error') {
           clearInterval(pollTimer); setLoading(false); showError(data.error || '不明なエラー');
         }
-      } catch(e) { /* ネットワークエラーは次のポーリングで再試行 */ }
+      } catch(e) {}
     }
 
-    function showResult(result) {
-      document.getElementById('kansan-text').value = result.kansan;
+    function showResults(result) {
+      const container = document.getElementById('cards-container');
+      container.innerHTML = '';
+
+      result.users.forEach((item, idx) => {
+        const cardId    = 'kansan-' + idx;
+        const badgeId   = 'badge-'  + idx;
+        const copyOkId  = 'copyok-' + idx;
+
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        card.innerHTML = `
+          <div class="user-header">
+            <span class="user-name">${escHtml(item.user)}</span>
+            <span class="char-count ${charClass(item.char_count)}" id="${badgeId}">${item.char_count}字</span>
+          </div>
+          <textarea class="kansan-textarea" id="${cardId}"
+            oninput="updateBadge('${cardId}','${badgeId}')"
+            rows="5">${escHtml(item.kansan)}</textarea>
+          <button class="btn-copy" onclick="copyCard('${cardId}','${copyOkId}')">
+            ノウビーにコピーする（${escHtml(item.user)}）
+          </button>
+          <div class="copy-ok" id="${copyOkId}">✓ コピーしました</div>
+        `;
+        container.appendChild(card);
+      });
+
       document.getElementById('transcript-box').textContent = result.transcript;
-      document.getElementById('result-area').style.display = 'block';
-      document.getElementById('btn-reset').style.display   = 'block';
-      updateCharCount();
-      document.getElementById('result-area').scrollIntoView({behavior: 'smooth'});
+      document.getElementById('results-area').style.display = 'block';
+      document.getElementById('btn-reset').style.display    = 'block';
+      document.getElementById('results-area').scrollIntoView({behavior: 'smooth'});
     }
 
-    function updateCharCount() {
-      const count = document.getElementById('kansan-text').value.length;
-      const badge = document.getElementById('char-badge');
+    function charClass(count) {
+      if (count >= 120 && count <= 180) return 'char-ok';
+      if (count > 180) return 'char-over';
+      return 'char-warn';
+    }
+
+    function updateBadge(textareaId, badgeId) {
+      const count = document.getElementById(textareaId).value.length;
+      const badge = document.getElementById(badgeId);
       badge.textContent = count + '字';
-      badge.className   = 'char-count';
-      if      (count >= 120 && count <= 180) badge.classList.add('char-ok');
-      else if (count > 180)                  badge.classList.add('char-over');
-      else                                   badge.classList.add('char-warn');
+      badge.className   = 'char-count ' + charClass(count);
     }
 
-    async function copyKansan() {
-      const text = document.getElementById('kansan-text').value;
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch(e) {
-        document.getElementById('kansan-text').select();
-        document.execCommand('copy');
-      }
-      document.getElementById('copy-ok').style.display = 'block';
-      setTimeout(() => { document.getElementById('copy-ok').style.display = 'none'; }, 2500);
+    async function copyCard(textareaId, okId) {
+      const text = document.getElementById(textareaId).value;
+      try { await navigator.clipboard.writeText(text); }
+      catch(e) { document.getElementById(textareaId).select(); document.execCommand('copy'); }
+      const ok = document.getElementById(okId);
+      ok.style.display = 'block';
+      setTimeout(() => { ok.style.display = 'none'; }, 2500);
     }
 
     function toggleTranscript() {
@@ -314,18 +339,17 @@
     }
 
     function resetForm() {
-      document.getElementById('url').value = '';
-      document.getElementById('result-area').style.display  = 'none';
-      document.getElementById('btn-reset').style.display    = 'none';
+      document.getElementById('url').value                   = '';
+      document.getElementById('results-area').style.display  = 'none';
+      document.getElementById('btn-reset').style.display     = 'none';
       document.getElementById('transcript-box').style.display = 'none';
       document.querySelector('.transcript-toggle').textContent = '▶ 文字起こし原文を確認する';
-      document.getElementById('copy-ok').style.display = 'none';
       window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
     function setLoading(on) {
-      document.getElementById('loading').style.display    = on ? 'block' : 'none';
-      document.getElementById('btn-generate').disabled   = on;
+      document.getElementById('loading').style.display  = on ? 'block' : 'none';
+      document.getElementById('btn-generate').disabled  = on;
     }
     function showError(msg) {
       const b = document.getElementById('error-box');
@@ -333,6 +357,9 @@
     }
     function hideError() {
       document.getElementById('error-box').style.display = 'none';
+    }
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
   </script>
 </body>
