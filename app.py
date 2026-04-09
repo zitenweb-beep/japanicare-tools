@@ -5,16 +5,65 @@ import tempfile
 import threading
 import uuid
 import time
+import re
 from functools import wraps
 from flask import (Flask, render_template, request, jsonify,
                    session, redirect, url_for, send_from_directory)
 import anthropic
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'change-this-in-production')
 
-APP_PASSWORD = os.environ.get('APP_PASSWORD', '')
+# SECRET_KEY が未設定の場合は起動時に警告
+_secret = os.environ.get('SECRET_KEY', '')
+if not _secret:
+    import secrets
+    _secret = secrets.token_hex(32)
+    print('WARNING: SECRET_KEY が未設定です。ランダム値を使用します（再起動でセッションが無効になります）。')
+app.secret_key = _secret
+
+# セッションをブラウザ閉じたら失効させる（永続化しない）
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE']   = True  # HTTPS のみ
+
+APP_PASSWORD  = os.environ.get('APP_PASSWORD', '')
 ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+
+# ── ブルートフォース対策（IPごとの失敗カウント） ──────────────────
+_login_failures: dict[str, dict] = {}
+_failures_lock  = threading.Lock()
+MAX_FAILURES    = 10   # 失敗上限
+LOCKOUT_SEC     = 600  # ロック時間（10分）
+
+def _get_ip() -> str:
+    return request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip()
+
+def _is_locked(ip: str) -> bool:
+    with _failures_lock:
+        rec = _login_failures.get(ip)
+        if not rec:
+            return False
+        if rec['count'] >= MAX_FAILURES:
+            if time.time() - rec['last'] < LOCKOUT_SEC:
+                return True
+            # ロック期間が過ぎたらリセット
+            del _login_failures[ip]
+    return False
+
+def _record_failure(ip: str):
+    with _failures_lock:
+        rec = _login_failures.setdefault(ip, {'count': 0, 'last': 0})
+        rec['count'] += 1
+        rec['last']   = time.time()
+
+def _clear_failure(ip: str):
+    with _failures_lock:
+        _login_failures.pop(ip, None)
+
+# ── stand.fm URL 検証 ─────────────────────────────────────────────
+ALLOWED_URL_PATTERN = re.compile(r'^https://stand\.fm/')
+
+def is_valid_url(url: str) -> bool:
+    return bool(ALLOWED_URL_PATTERN.match(url))
 
 # ── ジョブストア ──────────────────────────────────────────────────
 jobs: dict[str, dict] = {}
@@ -46,10 +95,16 @@ def login_required(f):
 def login():
     error = None
     if request.method == 'POST':
-        if request.form.get('password') == APP_PASSWORD and APP_PASSWORD:
+        ip = _get_ip()
+        if _is_locked(ip):
+            error = 'ログイン試行が多すぎます。しばらくお待ちください。'
+        elif request.form.get('password') == APP_PASSWORD and APP_PASSWORD:
+            _clear_failure(ip)
             session['authenticated'] = True
             return redirect(url_for('portal'))
-        error = 'パスワードが正しくありません'
+        else:
+            _record_failure(ip)
+            error = 'パスワードが正しくありません'
     return render_template('login.html', error=error)
 
 @app.route('/logout')
@@ -89,6 +144,8 @@ def kansan_start():
 
     if not url:
         return jsonify({'error': 'URLを入力してください'}), 400
+    if not is_valid_url(url):
+        return jsonify({'error': 'stand.fm の URL のみ受け付けています'}), 400
     if not ANTHROPIC_KEY:
         return jsonify({'error': 'ANTHROPIC_API_KEY が未設定です（管理者に連絡）'}), 500
 
@@ -227,8 +284,13 @@ def run_kansan_job(job_id, url, date_str, staff_code):
     except subprocess.TimeoutExpired:
         update_job(job_id, status='error',
                    error='処理がタイムアウトしました。URLを確認して再試行してください。')
-    except Exception as e:
+    except RuntimeError as e:
+        # ユーザー向けメッセージ（yt-dlp失敗など）はそのまま表示
         update_job(job_id, status='error', error=str(e))
+    except Exception:
+        # 予期せぬエラーは内部情報を隠す
+        update_job(job_id, status='error',
+                   error='処理中に予期せぬエラーが発生しました。管理者にお問い合わせください。')
 
 
 # ── 古いジョブをクリーンアップ ───────────────────────────────────
