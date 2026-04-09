@@ -127,13 +127,13 @@
 
 <!-- ============================ Step 2 ============================ -->
 <section class="step no-print">
-  <h2>Step 2. 基本情報の入力</h2>
-  <p class="muted">計画書ヘッダーの基本情報を入力します。文字起こしデータそのものは、このツールではなく Cowork チャットに直接貼り付けて Claude に渡してください。</p>
+  <h2>Step 2. 基本情報と文字起こし</h2>
+  <p class="muted">基本情報を入力し、スマホのボイスメモなどから得た文字起こしを下のボックスに貼り付けます。フィラー語（えー、あのー等）が残っていても構いません。AI側で除去します。</p>
 
   <h3>基本情報（計画書ヘッダー）</h3>
   <div class="grid2">
     <div class="field">
-      <label>利用者名（実名は緒方が手入力。社内では「利用者A」等で可）</label>
+      <label>利用者名（実名は手入力。社内では「利用者A」等で可）</label>
       <input type="text" id="userName" placeholder="例: 利用者A">
     </div>
     <div class="field">
@@ -166,23 +166,26 @@
     </div>
   </div>
 
-  <details>
-    <summary>文字起こしデータ（フォールバック用・任意）</summary>
-    <p class="small">通常は Cowork チャットに文字起こしを貼り付けて Claude に渡してください。チャットを使わずクリップボード経由で回したい場合のみ、以下のボックスに貼り付けて Step3 の「Claude用プロンプトをコピー」を使います。</p>
-    <div class="field">
-      <textarea id="transcript" placeholder="（フォールバック時のみ使用）"></textarea>
-    </div>
-  </details>
+  <h3>文字起こしデータ</h3>
+  <div class="field">
+    <textarea id="transcript" placeholder="ヒアリング音声の文字起こしをここに貼り付けてください。フィラー語・言い淀みはそのままでOKです。" style="min-height:180px"></textarea>
+  </div>
 </section>
 
 <!-- ============================ Step 3 ============================ -->
 <section class="step no-print">
-  <h2>Step 3. 原稿の貼り付けと出力</h2>
-  <p class="muted">Cowork チャットで Claude が生成した原稿（だ・である調・フィラー除去済み）を、対応する各ボックスに貼り付けます。貼り終えたら画面下の「Word（.doc）出力」または「印刷／PDF保存」で出力します。</p>
+  <h2>Step 3. AI生成 → 確認 → 出力</h2>
+  <p class="muted">「AI生成」ボタンを押すと、Claude（claude-sonnet-4-6）が文字起こしから各項目を抽出・整理し、下のボックスに自動入力します。生成後は内容を確認・修正し、最下部の「Word出力」または「印刷／PDF保存」で出力してください。</p>
+
+  <div class="btnrow">
+    <button id="aiBtn" onclick="runAIGenerate()">🤖 AI生成（Claude）</button>
+    <span id="aiStatus" class="small"></span>
+  </div>
+  <p class="small">※ 生成には10〜30秒ほどかかります。既に入力済みの項目は上書きされますのでご注意ください。</p>
 
   <details>
-    <summary>フォールバック：チャットを使わずクリップボード経由で回す場合</summary>
-    <p class="small">Step2下部の「文字起こしデータ」ボックスに貼り付けたうえで、下のボタンを押すとテンプレート入りプロンプトがコピーされます。それを Claude に貼り付けて、返ってきた原稿を各ボックスに貼ります。</p>
+    <summary>フォールバック：チャット経由で回す場合（AI生成ボタンが使えない時）</summary>
+    <p class="small">下のボタンを押すとテンプレート入りプロンプトがコピーされます。それを Claude に貼り付けて、返ってきた原稿を各ボックスに手で貼ります。</p>
     <div class="btnrow">
       <button class="sub" onclick="copyPrompt()">Claude用プロンプトをコピー</button>
       <span id="copyStatus" class="small"></span>
@@ -277,6 +280,56 @@ function removeGoal(idx){
 
 function esc(s){
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============== AI生成（Flask API経由） ==============
+async function runAIGenerate(){
+  const transcript = document.getElementById('transcript').value.trim();
+  const btn = document.getElementById('aiBtn');
+  const status = document.getElementById('aiStatus');
+  if(!transcript){
+    alert('先にStep2の「文字起こしデータ」に貼り付けてください。');
+    return;
+  }
+  if(transcript.length < 50){
+    if(!confirm('文字起こしが短いようです（50文字未満）。このまま生成しますか？')) return;
+  }
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '生成中… (10〜30秒)';
+  status.textContent = 'Claudeに問い合わせ中…';
+  try{
+    const res = await fetch('/shienkeikaku/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({transcript: transcript})
+    });
+    const data = await res.json();
+    if(!res.ok){
+      throw new Error(data.error || `サーバーエラー (${res.status})`);
+    }
+    // 各項目を自動入力
+    if(data.intention !== undefined) document.getElementById('intention').value = data.intention || '';
+    if(data.policy !== undefined) document.getElementById('policy').value = data.policy || '';
+    if(data.situation !== undefined) document.getElementById('situation').value = data.situation || '';
+    if(data.longGoal !== undefined) document.getElementById('longGoal').value = data.longGoal || '';
+    // 短期目標を再構築
+    if(Array.isArray(data.goals) && data.goals.length > 0){
+      document.getElementById('shortGoals').innerHTML = '';
+      goalCount = 0;
+      data.goals.forEach(g => addShortGoal(g));
+    }
+    refreshPreview();
+    status.textContent = '✓ 生成完了。内容を確認・修正してください。';
+    setTimeout(()=>{ status.textContent = ''; }, 8000);
+  }catch(err){
+    console.error(err);
+    status.textContent = '';
+    alert('AI生成に失敗しました: ' + (err.message || err));
+  }finally{
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
 }
 
 // ============== Claude用プロンプト ==============
