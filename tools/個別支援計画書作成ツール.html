@@ -127,8 +127,8 @@
 
 <!-- ============================ Step 2 ============================ -->
 <section class="step no-print">
-  <h2>Step 2. 基本情報・文字起こしの貼り付け</h2>
-  <p class="muted">録音した音声を文字起こしし、下のボックスに貼り付けてください。あわせて基本情報を入力します。</p>
+  <h2>Step 2. 基本情報の入力</h2>
+  <p class="muted">計画書ヘッダーの基本情報を入力します。文字起こしデータそのものは、このツールではなく Cowork チャットに直接貼り付けて Claude に渡してください。</p>
 
   <h3>基本情報（計画書ヘッダー）</h3>
   <div class="grid2">
@@ -166,22 +166,28 @@
     </div>
   </div>
 
-  <h3>文字起こしデータ</h3>
-  <p class="small">ヒアリング全体の文字起こしを以下のボックスに貼り付けてください。フィラー語（えー、あのー等）は除去しておくと精度が上がります。</p>
-  <div class="field">
-    <textarea id="transcript" placeholder="ヒアリング音声の文字起こしテキストをここに貼り付け..."></textarea>
-  </div>
+  <details>
+    <summary>文字起こしデータ（フォールバック用・任意）</summary>
+    <p class="small">通常は Cowork チャットに文字起こしを貼り付けて Claude に渡してください。チャットを使わずクリップボード経由で回したい場合のみ、以下のボックスに貼り付けて Step3 の「Claude用プロンプトをコピー」を使います。</p>
+    <div class="field">
+      <textarea id="transcript" placeholder="（フォールバック時のみ使用）"></textarea>
+    </div>
+  </details>
 </section>
 
 <!-- ============================ Step 3 ============================ -->
 <section class="step no-print">
-  <h2>Step 3. 原稿の生成と貼り付け</h2>
-  <p class="muted">下の「Claude用プロンプトをコピー」ボタンを押し、Claudeとの会話に貼り付けると、各項目の要約原稿（だ・である調）が返ってきます。返ってきた原稿を、対応するボックスに貼り付けてください。</p>
+  <h2>Step 3. 原稿の貼り付けと出力</h2>
+  <p class="muted">Cowork チャットで Claude が生成した原稿（だ・である調・フィラー除去済み）を、対応する各ボックスに貼り付けます。貼り終えたら画面下の「Word（.doc）出力」または「印刷／PDF保存」で出力します。</p>
 
-  <div class="btnrow">
-    <button class="sub" onclick="copyPrompt()">Claude用プロンプトをコピー</button>
-    <span id="copyStatus" class="small"></span>
-  </div>
+  <details>
+    <summary>フォールバック：チャットを使わずクリップボード経由で回す場合</summary>
+    <p class="small">Step2下部の「文字起こしデータ」ボックスに貼り付けたうえで、下のボタンを押すとテンプレート入りプロンプトがコピーされます。それを Claude に貼り付けて、返ってきた原稿を各ボックスに貼ります。</p>
+    <div class="btnrow">
+      <button class="sub" onclick="copyPrompt()">Claude用プロンプトをコピー</button>
+      <span id="copyStatus" class="small"></span>
+    </div>
+  </details>
 
   <hr class="sep">
 
