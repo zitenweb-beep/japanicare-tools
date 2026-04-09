@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>個別支援計画書 作成ツール｜JAPANICARE</title>
+<style>
+  :root{
+    --bg:#f5f5f0;
+    --paper:#ffffff;
+    --ink:#222;
+    --muted:#777;
+    --line:#d8d4cc;
+    --accent:#3a6b50;
+    --accent-soft:#e6efe8;
+    --warn:#b35a00;
+    --warn-soft:#fdf1e2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Mincho ProN","游明朝","Yu Mincho","MS 明朝",serif;line-height:1.7}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 20px 80px}
+  header.top{padding:20px 24px;background:#fff;border:1px solid var(--line);border-radius:8px;margin-bottom:18px}
+  header.top h1{margin:0 0 4px;font-size:22px;letter-spacing:.04em}
+  header.top p{margin:0;color:var(--muted);font-size:13px}
+  section.step{background:#fff;border:1px solid var(--line);border-radius:8px;padding:22px 24px;margin-bottom:18px}
+  section.step h2{margin:0 0 14px;font-size:18px;border-left:5px solid var(--accent);padding-left:10px}
+  section.step h3{margin:18px 0 8px;font-size:15px;color:var(--accent)}
+  .muted{color:var(--muted);font-size:12.5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+  .field label{font-size:12.5px;color:#555}
+  input[type=text],input[type=date],textarea,select{
+    font:inherit;font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+    border:1px solid var(--line);border-radius:5px;padding:8px 10px;background:#fff;color:var(--ink)
+  }
+  textarea{min-height:80px;resize:vertical;line-height:1.6}
+  .manual{background:var(--accent-soft);border-radius:6px;padding:14px 18px;margin-bottom:10px}
+  .manual ol{margin:6px 0 0 18px;padding:0}
+  .manual li{margin-bottom:8px}
+  .manual li b{color:var(--accent)}
+  .manual .ask{display:block;color:#444;font-size:13.5px;margin-top:2px}
+  .goal-block{border:1px dashed var(--line);border-radius:6px;padding:14px 16px;margin-bottom:14px;background:#fafaf6}
+  .goal-block .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .goal-block .head h4{margin:0;font-size:15px;color:var(--accent)}
+  .btnrow{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+  button{
+    font:inherit;font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+    background:var(--accent);color:#fff;border:0;border-radius:5px;
+    padding:9px 16px;cursor:pointer;font-size:13.5px;letter-spacing:.04em
+  }
+  button.sub{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  button.warn{background:var(--warn)}
+  button:hover{opacity:.92}
+  .notice{background:var(--warn-soft);border-left:4px solid var(--warn);padding:10px 14px;border-radius:4px;font-size:13px;margin:10px 0}
+  .copybox{position:relative}
+  .copybox textarea{width:100%;font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;font-size:12.5px;min-height:160px;background:#f9f8f3}
+  .small{font-size:12px;color:var(--muted)}
+  details{margin:6px 0}
+  details summary{cursor:pointer;color:var(--accent);font-size:13px}
+  hr.sep{border:0;border-top:1px solid var(--line);margin:18px 0}
+
+  /* ファイルドロップゾーン */
+  .dropzone{
+    border:2px dashed var(--accent);
+    border-radius:8px;
+    padding:18px 16px;
+    background:var(--accent-soft);
+    text-align:center;
+    cursor:pointer;
+    transition:background .15s,border-color .15s;
+    margin-bottom:10px;
+    font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif;
+  }
+  .dropzone:hover{background:#d9e8de}
+  .dropzone.dragover{background:#c5dccb;border-color:#245d3a}
+  .dropzone .dz-main{font-size:14px;color:var(--accent);font-weight:bold}
+  .dropzone .dz-sub{font-size:12px;color:#555;margin-top:4px}
+  .dropzone .dz-file{font-size:12.5px;color:var(--accent);margin-top:6px}
+  .dropzone input[type=file]{display:none}
+
+  /* 印刷用 */
+  @media print{
+    body{background:#fff}
+    .wrap{max-width:none;padding:0}
+    .no-print{display:none !important}
+    section.step{border:none;box-shadow:none;padding:0;margin:0}
+    header.top{border:none;padding:0;margin-bottom:14px}
+  }
+</style>
+<!-- mammoth.js: .docx をブラウザ側でテキスト抽出 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>個別支援計画書 作成ツール</h1>
+  <p>合同会社JAPANICARE ／ 就労継続支援B型 ジャパニケア札幌</p>
+</header>
+
+<!-- ============================ Step 1 ============================ -->
+<section class="step no-print">
+  <h2>Step 1. ヒアリングマニュアル</h2>
+  <p class="muted">利用者との面談時に下記の順番で確認します。録音しながら自然な対話で進めてください。</p>
+
+  <div class="manual">
+    <ol>
+      <li>
+        <b>① 長期目標</b>
+        <span class="ask">「1年後、3年後、5年後の長期目標について、どのように考えていますか？ どういう仕事をしていたいですか？」</span>
+      </li>
+      <li>
+        <b>② 短期目標</b>
+        <span class="ask">「長期目標に対する短期目標を考えていきます。半年後にはどうなっていたいですか？」</span>
+      </li>
+      <li>
+        <b>③ 課題</b>
+        <span class="ask">「短期目標を達成するために必要なこと、現在の課題について考えていきましょう」</span>
+      </li>
+      <li>
+        <b>④ 本人の取組内容</b>
+        <span class="ask">「課題が明確になりました。課題をクリアするために、仕事・体調管理・生活のリズムなどの目標を設定していきましょう」</span>
+      </li>
+      <li>
+        <b>⑤ 職員の支援内容</b>
+        <span class="ask">「これを受けて、当事業所ではどのような支援をしていくのが望ましいか、いっしょに考えましょう」</span>
+      </li>
+      <li>
+        <b>⑥ 達成期間</b>
+        <span class="ask">原則6ヶ月とする。</span>
+      </li>
+      <li>
+        <b>⑦ サービスを提供する上での留意事項</b>
+        <span class="ask">「体調チェックシート」の推移を観察する旨を伝える。</span>
+      </li>
+      <li>
+        <b>⑧ 整理</b>
+        <span class="ask">①〜⑦をもって、「本人・家族の意向」「総合的な支援の方針」「本人の現状」を整理していく。</span>
+      </li>
+    </ol>
+  </div>
+
+  <div class="notice">
+    短期目標は複数設定する場合があります。会話の中で複数の方向性が出てきたら、後のステップで「短期目標を追加」してください。
+  </div>
+</section>
+
+<!-- ============================ Step 2 ============================ -->
+<section class="step no-print">
+  <h2>Step 2. 基本情報と文字起こし</h2>
+  <p class="muted">基本情報を入力し、スマホのボイスメモなどから得た文字起こしを下のボックスに貼り付けます。フィラー語（えー、あのー等）が残っていても構いません。AI側で除去します。</p>
+
+  <h3>基本情報（計画書ヘッダー）</h3>
+  <div class="grid2">
+    <div class="field">
+      <label>利用者名（実名は手入力。社内では「利用者A」等で可）</label>
+      <input type="text" id="userName" placeholder="例: 利用者A">
+    </div>
+    <div class="field">
+      <label>受給者証番号</label>
+      <input type="text" id="recipientNo" placeholder="例: 1012392328">
+    </div>
+    <div class="field">
+      <label>事業所名</label>
+      <input type="text" id="officeName" value="ジャパニケア札幌">
+    </div>
+    <div class="field">
+      <label>作成者</label>
+      <input type="text" id="creator" placeholder="例: サビ管名">
+    </div>
+    <div class="field">
+      <label>承認者（サービス管理責任者）</label>
+      <input type="text" id="approver" placeholder="例: サビ管名">
+    </div>
+    <div class="field">
+      <label>計画作成日</label>
+      <input type="date" id="planDate">
+    </div>
+    <div class="field">
+      <label>支援期間（開始）</label>
+      <input type="date" id="periodStart">
+    </div>
+    <div class="field">
+      <label>支援期間（終了）</label>
+      <input type="date" id="periodEnd">
+    </div>
+  </div>
+
+  <h3>文字起こしデータ</h3>
+  <p class="small">ファイル（.txt / .md / .docx）を添付するか、下のボックスに直接貼り付けてください。フィラー語・言い淀みはそのままでOKです。</p>
+  <label class="dropzone" id="dropzone">
+    <div class="dz-main">📎 ファイルをドラッグ&ドロップ または クリックして選択</div>
+    <div class="dz-sub">.txt / .md / .docx に対応（スマホからもファイル選択可）</div>
+    <div class="dz-file" id="dzFile"></div>
+    <input type="file" id="fileInput" accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+  </label>
+  <div class="field">
+    <textarea id="transcript" placeholder="ここに直接貼り付けてもOKです。" style="min-height:180px"></textarea>
+  </div>
+</section>
+
+<!-- ============================ Step 3 ============================ -->
+<section class="step no-print">
+  <h2>Step 3. AI生成 → 確認 → 出力</h2>
+  <p class="muted">「AI生成」ボタンを押すと、Claude（claude-sonnet-4-6）が文字起こしから各項目を抽出・整理し、下のボックスに自動入力します。生成後は内容を確認・修正し、最下部の「Word出力」または「印刷／PDF保存」で出力してください。</p>
+
+  <div class="btnrow">
+    <button id="aiBtn" onclick="runAIGenerate()">🤖 AI生成（Claude）</button>
+    <span id="aiStatus" class="small"></span>
+  </div>
+  <p class="small">※ 生成には10〜30秒ほどかかります。既に入力済みの項目は上書きされますのでご注意ください。</p>
+
+  <details>
+    <summary>フォールバック：チャット経由で回す場合（AI生成ボタンが使えない時）</summary>
+    <p class="small">下のボタンを押すとテンプレート入りプロンプトがコピーされます。それを Claude に貼り付けて、返ってきた原稿を各ボックスに手で貼ります。</p>
+    <div class="btnrow">
+      <button class="sub" onclick="copyPrompt()">Claude用プロンプトをコピー</button>
+      <span id="copyStatus" class="small"></span>
+    </div>
+  </details>
+
+  <hr class="sep">
+
+  <h3>本人の状況</h3>
+  <div class="field">
+    <label>本人・家族の意向</label>
+    <textarea id="intention"></textarea>
+  </div>
+  <div class="field">
+    <label>総合的な支援の方針</label>
+    <textarea id="policy"></textarea>
+  </div>
+  <div class="field">
+    <label>本人の現状</label>
+    <textarea id="situation"></textarea>
+  </div>
+
+  <h3>長期目標</h3>
+  <div class="field">
+    <label>長期目標（1年後・3年後・5年後を見据えた目標）</label>
+    <textarea id="longGoal"></textarea>
+  </div>
+
+  <h3>短期目標</h3>
+  <div id="shortGoals"></div>
+  <div class="btnrow">
+    <button class="sub" onclick="addShortGoal()">＋ 短期目標を追加</button>
+  </div>
+
+  <h3>その他</h3>
+  <div class="field">
+    <textarea id="other" placeholder="特記事項があれば記入"></textarea>
+  </div>
+
+  <hr class="sep">
+
+  <div class="btnrow">
+    <button onclick="exportWord()">Word（.doc）を出力</button>
+    <button class="sub" onclick="window.print()">印刷 / PDF保存</button>
+    <button class="sub" onclick="saveDraft()">下書きを保存（このブラウザ）</button>
+    <button class="sub" onclick="loadDraft()">下書きを読み込む</button>
+    <button class="sub warn" onclick="clearAll()">全消去</button>
+  </div>
+  <p class="small">下書きはこのブラウザ内（IndexedDB/LocalStorage）に保存されます。実名はGoogle Driveや外部に送信されません。</p>
+</section>
+
+<!-- ============================ プレビュー（印刷用） ============================ -->
+<section class="step" id="printPreview">
+  <h2>個別支援計画書（プレビュー）</h2>
+  <div id="previewArea"></div>
+</section>
+
+</div>
+
+<script>
+// ============== ショートゴール（短期目標）管理 ==============
+let goalCount = 0;
+
+function addShortGoal(data){
+  goalCount++;
+  const idx = goalCount;
+  data = data || {};
+  const html = `
+    <div class="goal-block" data-goal="${idx}">
+      <div class="head">
+        <h4>短期目標 ${idx}</h4>
+        <button class="sub" onclick="removeGoal(${idx})">削除</button>
+      </div>
+      <div class="field"><label>課題</label><textarea data-k="issue">${esc(data.issue||'')}</textarea></div>
+      <div class="field"><label>目標</label><textarea data-k="goal">${esc(data.goal||'')}</textarea></div>
+      <div class="field"><label>本人の取組内容</label><textarea data-k="self">${esc(data.self||'')}</textarea></div>
+      <div class="field"><label>職員の支援内容</label><textarea data-k="staff">${esc(data.staff||'')}</textarea></div>
+      <div class="grid2">
+        <div class="field"><label>達成時期</label><input type="text" data-k="period" value="${esc(data.period||'6ヵ月')}"></div>
+        <div class="field"><label>サービスを提供する上での留意事項</label><input type="text" data-k="note" value="${esc(data.note||'「体調チェックシート」の推移を観察する。')}"></div>
+      </div>
+      <div class="field"><label>その他</label><textarea data-k="etc">${esc(data.etc||'')}</textarea></div>
+    </div>
+  `;
+  document.getElementById('shortGoals').insertAdjacentHTML('beforeend', html);
+}
+
+function removeGoal(idx){
+  const el = document.querySelector(`.goal-block[data-goal="${idx}"]`);
+  if(el) el.remove();
+}
+
+function esc(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============== ファイル添付（文字起こし取り込み） ==============
+(function(){
+  const dz = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const dzFile = document.getElementById('dzFile');
+  if(!dz || !fileInput) return;
+
+  function setStatus(msg, isErr){
+    dzFile.textContent = msg || '';
+    dzFile.style.color = isErr ? '#c0392b' : '';
+  }
+
+  async function handleFile(file){
+    if(!file) return;
+    const name = file.name || 'ファイル';
+    const lower = name.toLowerCase();
+    setStatus('読み込み中… ' + name);
+    try{
+      let text = '';
+      if(lower.endsWith('.txt') || lower.endsWith('.md') || lower.endsWith('.markdown') ||
+         file.type === 'text/plain' || file.type === 'text/markdown'){
+        text = await file.text();
+      }else if(lower.endsWith('.docx') ||
+               file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'){
+        if(typeof mammoth === 'undefined'){
+          throw new Error('.docx 変換ライブラリが読み込めていません。ページを再読込してください。');
+        }
+        const buf = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({arrayBuffer: buf});
+        text = (result && result.value) || '';
+      }else{
+        throw new Error('対応していない形式です（.txt / .md / .docx のみ）');
+      }
+      text = (text || '').trim();
+      if(!text){
+        throw new Error('ファイルからテキストを抽出できませんでした。');
+      }
+      const ta = document.getElementById('transcript');
+      if(ta.value.trim() && !confirm('文字起こしボックスに既に入力があります。ファイルの内容で上書きしますか？')){
+        setStatus('キャンセルしました');
+        return;
+      }
+      ta.value = text;
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      setStatus('✓ 取り込み完了: ' + name + '（' + text.length.toLocaleString() + '文字）');
+    }catch(err){
+      console.error(err);
+      setStatus('エラー: ' + (err.message || err), true);
+    }
+  }
+
+  fileInput.addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    if(f) handleFile(f);
+    fileInput.value = '';
+  });
+
+  ['dragenter','dragover'].forEach(ev=>{
+    dz.addEventListener(ev, e=>{
+      e.preventDefault(); e.stopPropagation();
+      dz.classList.add('dragover');
+    });
+  });
+  ['dragleave','drop'].forEach(ev=>{
+    dz.addEventListener(ev, e=>{
+      e.preventDefault(); e.stopPropagation();
+      dz.classList.remove('dragover');
+    });
+  });
+  dz.addEventListener('drop', e=>{
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) handleFile(f);
+  });
+})();
+
+// ============== AI生成（Flask API経由） ==============
+async function runAIGenerate(){
+  const transcript = document.getElementById('transcript').value.trim();
+  const btn = document.getElementById('aiBtn');
+  const status = document.getElementById('aiStatus');
+  if(!transcript){
+    alert('先にStep2の「文字起こしデータ」に貼り付けてください。');
+    return;
+  }
+  if(transcript.length < 50){
+    if(!confirm('文字起こしが短いようです（50文字未満）。このまま生成しますか？')) return;
+  }
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = '生成中… (10〜30秒)';
+  status.textContent = 'Claudeに問い合わせ中…';
+  try{
+    const res = await fetch('/shienkeikaku/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({transcript: transcript})
+    });
+    const data = await res.json();
+    if(!res.ok){
+      throw new Error(data.error || `サーバーエラー (${res.status})`);
+    }
+    // 各項目を自動入力
+    if(data.intention !== undefined) document.getElementById('intention').value = data.intention || '';
+    if(data.policy !== undefined) document.getElementById('policy').value = data.policy || '';
+    if(data.situation !== undefined) document.getElementById('situation').value = data.situation || '';
+    if(data.longGoal !== undefined) document.getElementById('longGoal').value = data.longGoal || '';
+    // 短期目標を再構築
+    if(Array.isArray(data.goals) && data.goals.length > 0){
+      document.getElementById('shortGoals').innerHTML = '';
+      goalCount = 0;
+      data.goals.forEach(g => addShortGoal(g));
+    }
+    refreshPreview();
+    status.textContent = '✓ 生成完了。内容を確認・修正してください。';
+    setTimeout(()=>{ status.textContent = ''; }, 8000);
+  }catch(err){
+    console.error(err);
+    status.textContent = '';
+    alert('AI生成に失敗しました: ' + (err.message || err));
+  }finally{
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+// ============== Claude用プロンプト ==============
+function copyPrompt(){
+  const transcript = document.getElementById('transcript').value.trim();
+  if(!transcript){
+    alert('先にStep2で文字起こしデータを貼り付けてください。');
+    return;
+  }
+  const prompt =
+`【依頼】個別支援計画書の原稿生成
+
+以下の文字起こしデータをもとに、就労継続支援B型事業所（ジャパニケア札幌）の個別支援計画書に記載する原稿を生成してください。
+
+【文体】「だ・である」調。簡潔。事実ベース。
+【伏せ字】利用者名・職員名は伏せ字（利用者A、スタッフB等）。実名は出力しない。
+【出力形式】下記の見出しのみ使用し、各項目の本文を続けて出力してください。
+
+----- 出力テンプレート -----
+
+# 本人・家族の意向
+（ここに本文）
+
+# 総合的な支援の方針
+（ここに本文）
+
+# 本人の現状
+（ここに本文）
+
+# 長期目標
+（1年後・3年後・5年後を見据えた目標）
+
+# 短期目標1
+- 課題：
+- 目標：
+- 本人の取組内容：
+- 職員の支援内容：
+- 達成時期：6ヵ月
+- 留意事項：「体調チェックシート」の推移を観察する。
+- その他：
+
+（短期目標が複数ある場合は「# 短期目標2」「# 短期目標3」と続ける）
+
+----- 文字起こしデータ -----
+${transcript}
+`;
+  navigator.clipboard.writeText(prompt).then(()=>{
+    document.getElementById('copyStatus').textContent = 'コピーしました。Claudeに貼り付けてください。';
+    setTimeout(()=>{document.getElementById('copyStatus').textContent='';}, 4000);
+  });
+}
+
+// ============== データ収集 ==============
+function collect(){
+  const goals = [];
+  document.querySelectorAll('.goal-block').forEach(b=>{
+    const g = {};
+    b.querySelectorAll('[data-k]').forEach(el=>{ g[el.dataset.k] = el.value; });
+    goals.push(g);
+  });
+  return {
+    userName: v('userName'), recipientNo: v('recipientNo'),
+    officeName: v('officeName'), creator: v('creator'), approver: v('approver'),
+    planDate: v('planDate'), periodStart: v('periodStart'), periodEnd: v('periodEnd'),
+    transcript: v('transcript'),
+    intention: v('intention'), policy: v('policy'), situation: v('situation'),
+    longGoal: v('longGoal'), other: v('other'),
+    goals: goals
+  };
+}
+function v(id){ return document.getElementById(id).value || ''; }
+
+function fmtDate(d){
+  if(!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${y}年${parseInt(m,10)}月${parseInt(day,10)}日`;
+}
+
+// ============== Word出力（HTMLラップ方式） ==============
+function buildHTMLBody(data){
+  const rows = (label, value) => `
+    <tr>
+      <td class="lbl">${esc(label)}</td>
+      <td>${esc(value).replace(/\n/g,'<br>')}</td>
+    </tr>`;
+  const goalTable = (g, i) => `
+    <h3>短期目標${i+1}</h3>
+    <table class="t">
+      ${rows('課題', g.issue)}
+      ${rows('目標', g.goal)}
+      ${rows('本人の取組内容', g.self)}
+      ${rows('職員の支援内容', g.staff)}
+      ${rows('達成時期', g.period)}
+      ${rows('サービスを提供する上での留意事項', g.note)}
+    </table>`;
+  return `
+  <h1 style="text-align:center">個別支援計画書</h1>
+  <p style="text-align:right">計画作成日：${fmtDate(data.planDate)}</p>
+
+  <table class="t">
+    ${rows('利用者名', (data.userName||'') + ' 様')}
+    ${rows('事業所', data.officeName)}
+    ${rows('受給者証番号', data.recipientNo)}
+    ${rows('作成者', data.creator + '　印')}
+    ${rows('支援期間', `${fmtDate(data.periodStart)}〜${fmtDate(data.periodEnd)}`)}
+    ${rows('承認者', 'サービス管理責任者　' + data.approver + '　印')}
+  </table>
+
+  <h2>本人の状況</h2>
+  <table class="t">
+    ${rows('本人・家族の意向', data.intention)}
+    ${rows('総合的な支援の方針', data.policy)}
+    ${rows('本人の現状', data.situation)}
+  </table>
+
+  <h2>長期目標</h2>
+  <table class="t">
+    ${rows('目標', data.longGoal)}
+  </table>
+
+  ${data.goals.map(goalTable).join('')}
+
+  <h2>その他</h2>
+  <table class="t">
+    <tr><td>${esc(data.other).replace(/\n/g,'<br>')}</td></tr>
+  </table>
+
+  <h2>交付</h2>
+  <table class="t">
+    ${rows('利用者への交付', '交付済み')}
+    ${rows('相談支援事業所への交付', '交付済み')}
+  </table>
+
+  <p style="margin-top:20px">上記個別支援計画書の内容についてサービス管理責任者より説明を受け、同意の上受領しました。</p>
+  <p style="text-align:right">　　年　　月　　日　　利用者名　　　　　　　　　　印</p>
+  `;
+}
+
+function exportWord(){
+  const data = collect();
+  if(!data.userName){
+    if(!confirm('利用者名が空です。このまま出力しますか？')) return;
+  }
+  const body = buildHTMLBody(data);
+  const html = `
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><meta charset='utf-8'>
+<title>個別支援計画書</title>
+<style>
+  body{font-family:"游明朝","Yu Mincho","MS Mincho",serif;font-size:10.5pt;line-height:1.6}
+  h1{font-size:20pt;margin:0 0 8pt}
+  h2{font-size:13pt;border-bottom:1pt solid #000;padding-bottom:2pt;margin:14pt 0 6pt}
+  h3{font-size:12pt;margin:12pt 0 4pt}
+  table.t{border-collapse:collapse;width:100%;margin:4pt 0}
+  table.t td{border:0.5pt solid #000;padding:6pt 8pt;vertical-align:top}
+  table.t td.lbl{width:160pt;background:#f2f2f2;font-weight:bold}
+  @page{size:A4;margin:20mm}
+</style>
+</head>
+<body>${body}</body></html>`;
+  const blob = new Blob(['\ufeff', html], {type: 'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const initial = (data.userName || 'X').replace(/[^A-Za-zぁ-んァ-ヶ一-龥]/g, '');
+  const dateStr = (data.planDate || '').replace(/-/g,'');
+  a.href = url;
+  a.download = `個別支援計画書_${initial}_${dateStr}.doc`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ============== プレビュー（印刷用） ==============
+function refreshPreview(){
+  const data = collect();
+  document.getElementById('previewArea').innerHTML = `
+    <style>
+      #previewArea h1{font-size:20pt;text-align:center;margin:0 0 6pt}
+      #previewArea h2{font-size:13pt;border-bottom:1pt solid #000;padding-bottom:2pt;margin:14pt 0 6pt}
+      #previewArea h3{font-size:12pt;margin:10pt 0 4pt;color:#000}
+      #previewArea table{border-collapse:collapse;width:100%;margin:4pt 0}
+      #previewArea td{border:1px solid #000;padding:6pt 8pt;vertical-align:top}
+      #previewArea td.lbl{width:160pt;background:#f2f2f2;font-weight:bold}
+    </style>
+    ${buildHTMLBody(data)}
+  `;
+}
+
+// 入力変更でプレビューを更新
+document.addEventListener('input', refreshPreview);
+document.addEventListener('change', refreshPreview);
+
+// ============== 下書き保存 ==============
+const DRAFT_KEY = 'japanicare_support_plan_draft_v1';
+function saveDraft(){
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(collect()));
+  alert('下書きを保存しました。');
+}
+function loadDraft(){
+  const j = localStorage.getItem(DRAFT_KEY);
+  if(!j){ alert('保存された下書きはありません。'); return; }
+  const d = JSON.parse(j);
+  Object.keys(d).forEach(k=>{
+    if(k==='goals') return;
+    const el = document.getElementById(k);
+    if(el) el.value = d[k];
+  });
+  document.getElementById('shortGoals').innerHTML = '';
+  goalCount = 0;
+  (d.goals||[]).forEach(g=>addShortGoal(g));
+  refreshPreview();
+}
+function clearAll(){
+  if(!confirm('入力内容をすべて消去します。よろしいですか？')) return;
+  document.querySelectorAll('input,textarea').forEach(el=>{
+    if(el.id==='officeName'){ el.value='ジャパニケア札幌'; return; }
+    el.value='';
+  });
+  document.getElementById('shortGoals').innerHTML = '';
+  goalCount = 0;
+  refreshPreview();
+}
+
+// 初期化：短期目標を1つ用意
+addShortGoal();
+refreshPreview();
+</script>
+</body>
+</html>
