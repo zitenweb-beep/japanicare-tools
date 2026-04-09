@@ -13,8 +13,8 @@ import anthropic
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'change-this-in-production')
 
-APP_PASSWORD = os.environ.get('APP_PASSWORD', '0000')
-ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '0000')
+APP_PASSWORD = os.environ.get('APP_PASSWORD', '')
+ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 
 # ── ジョブストア ──────────────────────────────────────────────────
 jobs: dict[str, dict] = {}
@@ -84,7 +84,6 @@ def kansan():
 def kansan_start():
     data       = request.json or {}
     url        = data.get('url', '').strip()
-    user_code  = data.get('user_code', '利用者A').strip()
     date_str   = data.get('date', '').strip()
     staff_code = data.get('staff_code', '担当職員').strip()
 
@@ -103,7 +102,7 @@ def kansan_start():
 
     threading.Thread(
         target=run_kansan_job,
-        args=(job_id, url, user_code, date_str, staff_code),
+        args=(job_id, url, date_str, staff_code),
         daemon=True
     ).start()
     return jsonify({'job_id': job_id})
@@ -123,7 +122,8 @@ def update_job(job_id, **kwargs):
     with jobs_lock:
         jobs[job_id].update(kwargs)
 
-def run_kansan_job(job_id, url, user_code, date_str, staff_code):
+def run_kansan_job(job_id, url, date_str, staff_code):
+    import json as json_mod
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
 
@@ -159,51 +159,70 @@ def run_kansan_job(job_id, url, user_code, date_str, staff_code):
                     parts.append(text)
             transcript = ''.join(parts)
 
-            # Step 3: 職員考察生成
+            # Step 3: 利用者ごとに職員考察を生成
             update_job(job_id, step='職員考察を生成中...')
             client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
             prompt = f"""あなたは就労継続支援B型事業所「ジャパニケア札幌」の支援員です。
-以下の音声文字起こしをもとに、支援記録の「職員考察」を執筆してください。
+以下の音声文字起こしには、複数の利用者の記録が含まれています。
 
 支援日：{date_str}
-対象：{user_code}
 担当：{staff_code}
 
 音声文字起こし：
-{transcript[:4000]}
+{transcript[:6000]}
 
-【執筆ルール】
+【指示】
+「本日の〇〇さん」「〇〇さんについて」などの区切りを手がかりに、利用者ごとのセクションを識別してください。
+各利用者に対して「職員考察」を執筆し、以下のJSON形式のみで出力してください。
+説明・前置き・コードブロック記号（```）は一切不要です。JSONだけを出力してください。
+
+[
+  {{"user": "Aさん", "kansan": "職員考察本文"}},
+  {{"user": "Bさん", "kansan": "職員考察本文"}}
+]
+
+【各考察の執筆ルール】
 ・120〜180字程度（端的にまとめる）
 ・利用者・職員の発話は「」でくくる
 ・当日の作業内容を必ず盛り込む
 ・利用者の体調・メンタル・様子を適切に記録する
 ・5W1Hを意識し、ほかのスタッフが読んでも現場の光景が浮かぶ内容にする
-・個人名は使わず、{user_code}として表記する
+・個人名は使わず「〇〇さん」として表記する
 
 【文体ルール（おがっち構文）】
 ・一文は30〜40字以内で短く切る
-・指示語（この・その・あの・それ）は使わない。対象を直接書く
-・「しかし」「だが」「けれども」は使わない。短文の連打で表現する
-・作業内容など結論から書き始める
-・体言止めを適宜活用する
+・指示語（この・その・あの・それ）は使わない
+・「しかし」「だが」は使わない。短文の連打で表現する
+・結論から書き始める。体言止めを適宜活用する
 
 【表記ルール】
-・野菜名はカタカナ（タマネギ・レタス・キャベツ・ジャガイモ等）
-・その他の漢字ひらがなの使い分けは「例解辞典」の表記ルールに準拠
-
-職員考察の本文のみを出力してください。説明・前置き・見出しは不要です。"""
+・野菜名はカタカナ（タマネギ・レタス・キャベツ等）
+・その他は「例解辞典」の表記ルールに準拠"""
 
             msg = client.messages.create(
                 model='claude-sonnet-4-6',
-                max_tokens=500,
+                max_tokens=2000,
                 messages=[{'role': 'user', 'content': prompt}]
             )
-            kansan_text = msg.content[0].text.strip()
+            raw = msg.content[0].text.strip()
+
+            # JSON をパース（```json ... ``` で囲まれている場合も対応）
+            raw_clean = raw
+            if '```' in raw_clean:
+                raw_clean = raw_clean.split('```')[-2] if raw_clean.count('```') >= 2 else raw_clean
+                raw_clean = raw_clean.replace('json', '', 1).strip()
+            users_data = json_mod.loads(raw_clean)
+
+            # 文字数を付加
+            results = [
+                {'user': item['user'],
+                 'kansan': item['kansan'],
+                 'char_count': len(item['kansan'])}
+                for item in users_data
+            ]
 
             update_job(job_id, status='done', step='完了',
-                       result={'kansan': kansan_text,
-                               'char_count': len(kansan_text),
-                               'transcript': transcript})
+                       result={'users': results, 'transcript': transcript})
 
     except subprocess.TimeoutExpired:
         update_job(job_id, status='error',
