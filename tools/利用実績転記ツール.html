@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>工賃明細 → 利用実績 自動転記ツール｜JAPANICARE</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Meiryo', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+      background: #f0f4f8; color: #2c3e50; min-height: 100vh; padding: 20px;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; }
+
+    .header {
+      background: linear-gradient(135deg, #1a3a5c, #2e6da4);
+      color: white; padding: 16px 22px; border-radius: 10px;
+      margin-bottom: 18px; display: flex; align-items: center; gap: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .header-icon { font-size: 2rem; }
+    .header h1 { font-size: 1.05rem; font-weight: bold; }
+    .header p  { font-size: 0.75rem; opacity: .8; margin-top: 3px; }
+
+    .step {
+      background: white; border-radius: 10px; padding: 18px 20px;
+      margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #1a3a5c; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .82rem; font-weight: bold; flex-shrink: 0;
+    }
+    .step-num.done { background: #27ae60; }
+    .step-title { font-size: .95rem; font-weight: bold; color: #1a3a5c; }
+
+    .drop-zone {
+      border: 2px dashed #b0c4d8; border-radius: 8px;
+      padding: 28px 20px; text-align: center; cursor: pointer;
+      transition: all .2s; background: #f7fafc;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: #2e6da4; background: #ebf4ff; }
+    .drop-zone.loaded { border-color: #27ae60; background: #eafaf1; }
+    .drop-zone .dz-icon { font-size: 2rem; margin-bottom: 8px; }
+    .drop-zone .dz-text { font-size: .88rem; color: #555; }
+    .drop-zone .dz-sub  { font-size: .75rem; color: #999; margin-top: 4px; }
+    .drop-zone.loaded .dz-text { color: #27ae60; font-weight: bold; }
+    input[type="file"] { display: none; }
+
+    .file-list { margin-top: 12px; }
+    .file-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; background: #f0f4f8; border-radius: 6px;
+      margin-bottom: 5px; font-size: .82rem;
+    }
+    .file-item .fi-name { flex: 1; }
+    .fi-ok  { color: #27ae60; font-weight: bold; }
+    .fi-err { color: #e74c3c; font-weight: bold; }
+
+    .preview-wrap { overflow-x: auto; margin-top: 14px; }
+    .preview-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .preview-table th {
+      background: #1a3a5c; color: white; padding: 8px 10px;
+      text-align: center; white-space: nowrap; font-size: .78rem;
+    }
+    .preview-table td { padding: 7px 10px; border-bottom: 1px solid #e8ecf0; text-align: center; }
+    .preview-table tr.ok-row td { background: #eafaf1; }
+    .preview-table tr.err-row td { background: #fdf3f2; color: #e74c3c; }
+    .preview-table td.name-cell { text-align: left; font-weight: bold; padding-left: 14px; }
+
+    .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: .7rem; font-weight: bold; }
+    .badge-ok  { background: #27ae60; color: white; }
+    .badge-err { background: #e74c3c; color: white; }
+
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .btn {
+      padding: 9px 20px; border: none; border-radius: 7px; cursor: pointer;
+      font-size: .9rem; font-family: inherit; font-weight: bold; transition: .15s;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, #1a3a5c, #2e6da4); color: white; }
+    .btn-primary:not(:disabled):hover { opacity: .88; }
+    .btn-download {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      color: white; font-size: 1rem; padding: 11px 28px;
+    }
+    .btn-download:not(:disabled):hover { opacity: .88; }
+    .btn-reset { background: #ecf0f1; color: #555; border: 1px solid #ccc; }
+    .btn-reset:hover { background: #dfe6e9; }
+
+    .result-section { display: none; }
+    .result-section.visible { display: block; }
+
+    .info-box {
+      background: #eef3f8; border-left: 3px solid #2e6da4;
+      border-radius: 0 6px 6px 0; padding: 9px 13px;
+      font-size: .78rem; color: #444; line-height: 1.7; margin-bottom: 12px;
+    }
+    .summary-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .sum-card { padding: 10px 16px; border-radius: 8px; text-align: center; min-width: 100px; }
+    .sum-card.ok   { background: #eafaf1; border: 1.5px solid #27ae60; }
+    .sum-card.warn { background: #fef9e7; border: 1.5px solid #f39c12; }
+    .sum-card .sc-num { font-size: 1.4rem; font-weight: bold; }
+    .sum-card.ok .sc-num { color: #27ae60; }
+    .sum-card.warn .sc-num { color: #e67e22; }
+    .sum-card .sc-label { font-size: .72rem; color: #777; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-icon">📋</div>
+    <div>
+      <h1>工賃明細 → 利用実績 自動転記ツール｜JAPANICARE</h1>
+      <p>工賃明細Excelを複数まとめてドロップ → 利用実績ファイルへ時間・日・工賃月額を自動反映してダウンロード</p>
+    </div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num" id="num1">1</div>
+      <div class="step-title">利用実績ファイルをドロップ（ジャパニケア札幌 利用実績20XX年度.xlsx）</div>
+    </div>
+    <div class="info-box">
+      <strong>対象ファイル：</strong>「ジャパニケア札幌 利用実績20XX年度.xlsx」<br>
+      転記後にダウンロードされたファイルを上書き保存して毎月使い続けます。
+    </div>
+    <div class="drop-zone" id="dz1">
+      <input type="file" id="f1" accept=".xlsx">
+      <div class="dz-icon">📊</div>
+      <div class="dz-text">クリックまたはドラッグ＆ドロップ</div>
+      <div class="dz-sub">利用実績.xlsx（1ファイル）</div>
+    </div>
+    <div id="rireki-status" style="margin-top:10px; font-size:.82rem;"></div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num" id="num2">2</div>
+      <div class="step-title">工賃明細ファイルをまとめてドロップ（対象月の全員分）</div>
+    </div>
+    <div class="info-box">
+      <strong>対象ファイル：</strong>「工賃明細202604_上坂様.xlsx」のような個人別ファイル<br>
+      同じ月の分をまとめてドロップ。<strong>異なる月が混在してもOK</strong>（月ごとに自動振り分け）。
+    </div>
+    <div class="drop-zone" id="dz2">
+      <input type="file" id="f2" accept=".xlsx" multiple>
+      <div class="dz-icon">📂</div>
+      <div class="dz-text">クリックまたはドラッグ＆ドロップ</div>
+      <div class="dz-sub">工賃明細_XX様.xlsx（複数同時OK）</div>
+    </div>
+    <div class="file-list" id="meisai-list"></div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div class="step-title">内容を確認してダウンロード</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-preview" disabled>🔍 転記内容をプレビュー</button>
+    </div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="step result-section" id="resultSection">
+    <div class="step-header">
+      <div class="step-num done">✔</div>
+      <div class="step-title" id="result-title">転記プレビュー</div>
+    </div>
+    <div class="summary-bar" id="summary-bar"></div>
+    <div class="preview-wrap">
+      <table class="preview-table">
+        <thead>
+          <tr>
+            <th>氏名</th><th>対象月</th><th>出勤日数</th>
+            <th>労働時間</th><th>工賃月額</th><th>書込先セル</th><th>判定</th>
+          </tr>
+        </thead>
+        <tbody id="preview-body"></tbody>
+      </table>
+    </div>
+    <div class="btn-row" style="margin-top:16px; justify-content:space-between;">
+      <button class="btn btn-reset" id="btn-reset">← やり直す</button>
+      <button class="btn btn-download" id="btn-download" disabled>📥 利用実績ファイルをダウンロード</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== 状態 =====
+var rirekiWb = null;
+var rirekiFileName = '';
+var meisaiList = [];
+var writeList = [];
+
+// ===== ユーティリティ =====
+function numToCol(n) {
+  var s = '';
+  while (n > 0) {
+    s = String.fromCharCode(65 + (n - 1) % 26) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function monthToStartCol(month) {
+  var idx = (month >= 4) ? (month - 4) : (month + 8);
+  return 2 + idx * 3;
+}
+
+function toFamilyName(fullName) {
+  if (!fullName) return '';
+  return String(fullName).trim().split(/[\s\u3000]+/)[0];
+}
+
+function fmtTime(hours, minutes) {
+  var h = hours || 0, m = minutes || 0;
+  return m === 0 ? (h + '時間') : (h + '時間' + m + '分');
+}
+
+function toDecimalHours(hours, minutes) {
+  return (hours || 0) + (minutes || 0) / 60;
+}
+
+function fmtYen(v) {
+  if (v == null || v === '') return '—';
+  return '¥' + Number(v).toLocaleString('ja-JP');
+}
+
+// ===== ファイル読み込み（ArrayBuffer／Safari対応） =====
+function readXlsx(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, { type: 'array' });
+      callback(null, wb);
+    } catch(err) {
+      callback(err, null);
+    }
+  };
+  reader.onerror = function() { callback(new Error('読み込み失敗'), null); };
+  reader.readAsArrayBuffer(file);
+}
+
+// ===== 利用実績 =====
+function loadRireki(files) {
+  if (!files || files.length === 0) return;
+  var file = files[0];
+  rirekiFileName = file.name;
+  readXlsx(file, function(err, wb) {
+    if (err) { alert('利用実績ファイルの読み込みに失敗しました：' + err.message); return; }
+    rirekiWb = wb;
+    var dz = document.getElementById('dz1');
+    dz.classList.add('loaded');
+    dz.querySelector('.dz-text').textContent = '✔ ' + file.name;
+    dz.querySelector('.dz-sub').textContent = '読み込み完了';
+    document.getElementById('num1').classList.add('done');
+    document.getElementById('rireki-status').innerHTML =
+      '<span style="color:#27ae60;font-weight:bold;">✔ 読み込み完了：</span>' + file.name;
+    checkReady();
+  });
+}
+
+// ===== 工賃明細 =====
+function loadMeisai(files) {
+  if (!files || files.length === 0) return;
+  Array.prototype.forEach.call(files, function(file) {
+    readXlsx(file, function(err, wb) {
+      if (err) { addMeisaiItem(file.name, null, 'ファイル読み込みエラー'); return; }
+      var ws = wb.Sheets['工賃明細'];
+      if (!ws) { addMeisaiItem(file.name, null, '「工賃明細」シートが見つかりません'); return; }
+
+      var fullName = ws['D3'] ? ws['D3'].v : null;
+      var year     = ws['L1'] ? ws['L1'].v : null;
+      var month    = ws['P1'] ? ws['P1'].v : null;
+      var days     = ws['D5'] ? ws['D5'].v : null;
+      var hours    = ws['O5'] ? ws['O5'].v : 0;
+      var minutes  = ws['T5'] ? ws['T5'].v : 0;
+      var wage     = ws['Q15'] ? ws['Q15'].v : null;
+
+      if (!fullName || !year || !month) {
+        addMeisaiItem(file.name, null, '氏名・年・月が読み取れません'); return;
+      }
+      var data = {
+        fileName: file.name,
+        fullName: String(fullName).trim(),
+        familyName: toFamilyName(fullName),
+        year: parseInt(year),
+        month: parseInt(month),
+        days: days != null ? parseInt(days) : null,
+        hours: hours != null ? parseInt(hours) : 0,
+        minutes: minutes != null ? parseInt(minutes) : 0,
+        wage: wage != null ? parseFloat(wage) : null,
+      };
+      meisaiList.push(data);
+      addMeisaiItem(file.name, data, null);
+      document.getElementById('num2').classList.add('done');
+      checkReady();
+    });
+  });
+}
+
+function addMeisaiItem(fileName, data, err) {
+  var list = document.getElementById('meisai-list');
+  var div = document.createElement('div');
+  div.className = 'file-item';
+  if (err) {
+    div.innerHTML = '<span>📄</span><span class="fi-name">' + fileName + '</span><span class="fi-status fi-err">⚠ ' + err + '</span>';
+  } else {
+    var label = data.fullName + '（' + data.year + '年' + data.month + '月）';
+    div.innerHTML = '<span>✅</span><span class="fi-name">' + fileName + '</span><span class="fi-status fi-ok">' + label + '</span>';
+  }
+  list.appendChild(div);
+}
+
+function checkReady() {
+  document.getElementById('btn-preview').disabled = !(rirekiWb && meisaiList.length > 0);
+}
+
+// ===== 利用実績の氏名スキャン =====
+function scanUserRows(ws) {
+  var map = {};
+  for (var r = 6; r <= 50; r++) {
+    var cell = ws['A' + r];
+    if (!cell) continue;
+    var val = String(cell.v).trim();
+    if (!val || val === '計') break;
+    map[val] = r;
+  }
+  return map;
+}
+
+// ===== プレビュー =====
+function buildPreview() {
+  var ws = rirekiWb.Sheets['Sheet1'];
+  if (!ws) { alert('利用実績ファイルに「Sheet1」が見つかりません。'); return; }
+
+  var userRowMap = scanUserRows(ws);
+  var tbody = document.getElementById('preview-body');
+  tbody.innerHTML = '';
+  writeList = [];
+
+  var okCount = 0, warnCount = 0;
+
+  meisaiList.forEach(function(d) {
+    var colStart = monthToStartCol(d.month);
+    var colT = numToCol(colStart);
+    var colD = numToCol(colStart + 1);
+    var colW = numToCol(colStart + 2);
+    var targetRow = userRowMap[d.familyName];
+    var monthLabel = d.year + '年' + d.month + '月';
+
+    var statusBadge, rowClass, writeInfo;
+
+    if (!targetRow) {
+      statusBadge = '<span class="badge badge-err">氏名未マッチ</span>';
+      rowClass = 'err-row';
+      writeInfo = '「' + d.familyName + '」が利用実績に見つかりません';
+      warnCount++;
+    } else {
+      var decHours = toDecimalHours(d.hours, d.minutes);
+      writeList.push({
+        familyName: d.familyName,
+        cellT: colT + targetRow, valT: Math.round(decHours * 100) / 100,
+        cellD: colD + targetRow, valD: d.days,
+        cellW: colW + targetRow, valW: d.wage,
+      });
+      statusBadge = '<span class="badge badge-ok">✔ 転記OK</span>';
+      rowClass = 'ok-row';
+      writeInfo = colT + targetRow + '(時間)・' + colD + targetRow + '(日)・' + colW + targetRow + '(工賃)';
+      okCount++;
+    }
+
+    var tr = document.createElement('tr');
+    tr.className = rowClass;
+    tr.innerHTML =
+      '<td class="name-cell">' + d.fullName + '</td>' +
+      '<td>' + monthLabel + '</td>' +
+      '<td>' + (d.days != null ? d.days + '日' : '—') + '</td>' +
+      '<td>' + fmtTime(d.hours, d.minutes) + '</td>' +
+      '<td>' + fmtYen(d.wage) + '</td>' +
+      '<td style="font-size:.75rem;color:#666;">' + writeInfo + '</td>' +
+      '<td>' + statusBadge + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('summary-bar').innerHTML =
+    '<div class="sum-card ok"><div class="sc-num">' + okCount + '</div><div class="sc-label">転記OK</div></div>' +
+    '<div class="sum-card ' + (warnCount > 0 ? 'warn' : 'ok') + '"><div class="sc-num">' + warnCount + '</div><div class="sc-label">未マッチ</div></div>' +
+    '<div class="sum-card ok"><div class="sc-num">' + meisaiList.length + '</div><div class="sc-label">ファイル数</div></div>';
+
+  var months = [];
+  meisaiList.forEach(function(d) {
+    var lbl = d.year + '年' + d.month + '月';
+    if (months.indexOf(lbl) < 0) months.push(lbl);
+  });
+  document.getElementById('result-title').textContent = '転記プレビュー（' + months.join('・') + '）';
+
+  document.getElementById('btn-download').disabled = (writeList.length === 0);
+  document.getElementById('resultSection').classList.add('visible');
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ===== ダウンロード（Safari対応：Blob + aタグ） =====
+function doDownload() {
+  if (!rirekiWb || writeList.length === 0) return;
+
+  var ws = rirekiWb.Sheets['Sheet1'];
+  writeList.forEach(function(w) {
+    if (w.valT != null) ws[w.cellT] = { t: 'n', v: w.valT };
+    if (w.valD != null) ws[w.cellD] = { t: 'n', v: w.valD };
+    if (w.valW != null) ws[w.cellW] = { t: 'n', v: w.valW };
+  });
+
+  var months = [];
+  meisaiList.forEach(function(d) {
+    var key = d.year + '' + ('0' + d.month).slice(-2);
+    if (months.indexOf(key) < 0) months.push(key);
+  });
+  months.sort();
+  var baseName = rirekiFileName.replace(/\.xlsx$/i, '');
+  var outName = baseName + '_更新済_' + months.join('_') + '.xlsx';
+
+  // Safari対応ダウンロード
+  var wbout = XLSX.write(rirekiWb, { bookType: 'xlsx', type: 'array' });
+  var blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = outName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function() {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 300);
+}
+
+// ===== リセット =====
+function resetAll() {
+  rirekiWb = null; rirekiFileName = '';
+  meisaiList = []; writeList = [];
+
+  var dz1 = document.getElementById('dz1');
+  dz1.classList.remove('loaded');
+  dz1.querySelector('.dz-text').textContent = 'クリックまたはドラッグ＆ドロップ';
+  dz1.querySelector('.dz-sub').textContent = '利用実績.xlsx（1ファイル）';
+  document.getElementById('num1').classList.remove('done');
+  document.getElementById('rireki-status').innerHTML = '';
+  document.getElementById('meisai-list').innerHTML = '';
+  document.getElementById('num2').classList.remove('done');
+  document.getElementById('resultSection').classList.remove('visible');
+  document.getElementById('btn-preview').disabled = true;
+  document.getElementById('btn-download').disabled = true;
+  document.getElementById('f1').value = '';
+  document.getElementById('f2').value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== DOM読み込み完了後にイベント設定 =====
+document.addEventListener('DOMContentLoaded', function() {
+
+  // クリックでファイル選択
+  document.getElementById('dz1').addEventListener('click', function() {
+    document.getElementById('f1').click();
+  });
+  document.getElementById('dz2').addEventListener('click', function() {
+    document.getElementById('f2').click();
+  });
+
+  // ファイル選択
+  document.getElementById('f1').addEventListener('change', function() {
+    loadRireki(this.files);
+  });
+  document.getElementById('f2').addEventListener('change', function() {
+    loadMeisai(this.files);
+  });
+
+  // ドラッグ＆ドロップ
+  ['dz1', 'dz2'].forEach(function(id) {
+    var zone = document.getElementById(id);
+    var handler = id === 'dz1' ? loadRireki : loadMeisai;
+    zone.addEventListener('dragover', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.remove('dragover');
+    });
+    zone.addEventListener('drop', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.remove('dragover');
+      handler(e.dataTransfer.files);
+    });
+  });
+
+  // ボタン
+  document.getElementById('btn-preview').addEventListener('click', buildPreview);
+  document.getElementById('btn-download').addEventListener('click', doDownload);
+  document.getElementById('btn-reset').addEventListener('click', resetAll);
+});
+</script>
+</body>
+</html>
