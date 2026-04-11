@@ -3,47 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ログイン | 職員考察ツール</title>
+  <title>ログイン | JAPANICARE 業務ツール</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Meiryo', sans-serif;
-      background: #eef2f7;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+      background: #F5F5F7;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
       padding: 24px;
+      color: #1D1D1F;
     }
     .card {
-      background: #fff;
+      background: #FFFFFF;
       border-radius: 16px;
       padding: 48px 40px;
       width: 100%;
       max-width: 380px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      border: 1px solid #E8E8ED;
     }
     .brand {
       text-align: center;
-      margin-bottom: 36px;
+      margin-bottom: 40px;
     }
     .brand-name {
       font-size: 22px;
-      font-weight: 800;
-      color: #1d4ed8;
-      letter-spacing: 0.03em;
+      font-weight: 700;
+      color: #1D1D1F;
+      letter-spacing: -0.01em;
     }
     .brand-sub {
       font-size: 13px;
-      color: #6b7280;
+      color: #86868B;
       margin-top: 6px;
     }
     .error-box {
-      background: #fef2f2;
-      border: 1.5px solid #fecaca;
-      color: #dc2626;
-      border-radius: 8px;
-      padding: 10px 14px;
+      background: #FFEAEA;
+      border: 1px solid #FFB8B8;
+      color: #CC1818;
+      border-radius: 12px;
+      padding: 12px 16px;
       font-size: 13px;
       margin-bottom: 20px;
     }
@@ -51,42 +52,50 @@
       display: block;
       font-size: 14px;
       font-weight: 600;
-      color: #374151;
+      color: #1D1D1F;
       margin-bottom: 8px;
     }
     input[type="password"] {
       width: 100%;
-      padding: 13px 16px;
-      border: 1.5px solid #d1d5db;
-      border-radius: 10px;
+      padding: 14px 16px;
+      border: 1px solid #D2D2D7;
+      border-radius: 12px;
       font-size: 16px;
+      font-family: inherit;
       outline: none;
-      transition: border-color 0.15s;
-      color: #111;
+      transition: border-color 0.2s;
+      color: #1D1D1F;
+      background: #FFFFFF;
     }
-    input[type="password"]:focus { border-color: #1d4ed8; }
+    input[type="password"]::placeholder {
+      color: #86868B;
+    }
+    input[type="password"]:focus {
+      border-color: #0071E3;
+    }
     button {
       width: 100%;
       margin-top: 24px;
       padding: 14px;
-      background: #1d4ed8;
-      color: #fff;
+      background: #0071E3;
+      color: #FFFFFF;
       border: none;
-      border-radius: 10px;
+      border-radius: 9999px;
       font-size: 16px;
-      font-weight: 700;
+      font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.2s;
     }
-    button:hover { background: #1e40af; }
-    button:active { background: #1e3a8a; }
+    button:hover { background: #0077ED; }
+    button:active { background: #005BB5; }
   </style>
 </head>
 <body>
   <div class="card">
     <div class="brand">
       <div class="brand-name">JAPANICARE</div>
-      <div class="brand-sub">JAPANICARE 業務ツール</div>
+      <div class="brand-sub">業務ツール</div>
     </div>
 
     {% if error %}
