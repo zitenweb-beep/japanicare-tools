@@ -228,6 +228,122 @@ def shienkeikaku_generate():
         print(f'[SHIENKEIKAKU ERROR] {traceback.format_exc()}', flush=True)
         return jsonify({'error': '処理中にエラーが発生しました。時間をおいて再試行してください。'}), 500
 
+# ── SNS投稿ジェネレーター ─────────────────────────────────────────
+@app.route('/post-generator/generate', methods=['POST'])
+@login_required
+def post_generator_generate():
+    import json as json_mod
+    data = request.json or {}
+    platform    = data.get('platform', 'x')
+    theme_name  = (data.get('theme_name') or '').strip()
+    theme_angle = (data.get('theme_angle') or '').strip()
+    free_text   = (data.get('free_text') or '').strip()
+
+    if not theme_name and not free_text:
+        return jsonify({'error': 'テーマを選ぶか自由入力を記入してください'}), 400
+    if not ANTHROPIC_KEY:
+        return jsonify({'error': 'ANTHROPIC_API_KEY が未設定です（管理者に連絡）'}), 500
+
+    # テーマブロックの構築
+    if theme_name:
+        theme_block = f'【テーマ】{theme_name}\n【切り口のヒント】{theme_angle}'
+        if free_text:
+            theme_block += f'\n【補足・現場エピソード】\n{free_text}'
+    else:
+        theme_block = f'【テーマ（自由入力）】\n{free_text}'
+
+    # プラットフォーム別ルール
+    if platform == 'x':
+        platform_name = 'X (Twitter)'
+        platform_rules = ('・X投稿用。全角140字ちょうど前後（130〜150字）で収める。\n'
+                          '・改行は最大2箇所まで。冒頭で引きつけ、終わりに余韻。')
+    else:
+        platform_name = 'Threads'
+        platform_rules = ('・Threads投稿用。180〜240字で少しゆとりを持たせる。\n'
+                          '・改行を効果的に使い、リズムを作る（3〜5箇所）。')
+
+    prompt = f"""あなたはジャパニケア札幌（合同会社JAPANICARE運営の就労継続支援B型事業所）の広報担当です。
+以下の条件で、SNS投稿案を【3案】作ってください。
+
+{theme_block}
+
+【プラットフォーム】{platform_name}
+{platform_rules}
+
+【ジャパニケア札幌の核となるスタンス（必ず滲ませる）】
+・「全方位全肯定」「福祉をカジュアルに、もっと身近に」「クールでスタイリッシュな福祉」
+・「私たちは障害者とはつきあっていない。おつきあいしているのは一人の人」というフラットな視線
+・『障害者』というラベルを無力化したい。「困っている人がいたら、できる範囲で助け合おう」レベルの自然さ
+・代表は現役のパニック障害。『いつかの自分が必要としていた居場所』を作っている
+・マノメオ（円山公園駅徒歩6分のカフェ・バー併設雑貨店）が舞台。ZINE・クラフトビール・全国福祉事業所のイケてるアイテムを扱う
+・工賃・居場所・主体性・凡々たる非凡・自分軸・誠実に一歩ずつ、などの語彙が自然に出る
+・「真の支援員はお客様でした」「みんなでみんなを応援する」という関係観
+
+【絶対NG】
+・上から目線の支援者ポジション（「利用者様に寄り添い…」など）
+・同情を誘う訴求（「障害者が作ったから応援を」など）
+・きれいごとの定型文
+・感動ポルノ、啓発的で説教くさい語り口
+・ハッシュタグ羅列（1〜2個までなら可）
+・絵文字の多用（0〜1個）
+・過剰な丁寧語（「〜させていただきます」「〜のではないでしょうか」）
+・利用者の実名（「利用者Aさん」のように伏せる）
+
+【文体ルール：おがっち構文（厳守）】
+・一文は30〜40字以内。情報を詰め込まない。
+・指示語（この／その／あの／それ／これ）は極力使わない。対象を直接書く。
+・「しかし／だが／けれども」は使わない。逆接は短文の連打か「──」で表現。
+・体言止めを効果的に使い、余韻と強さを出す。
+・結論ファースト。事実・結論を先に出し、理由は後。
+・感情を説明せず、感情が伝わる事実を書く（例：「感動した」→「眠れなかった」）。
+・五感（匂い・温度・触感・音）で書く。抽象論より具体的な場面。
+・一人称は「僕」または「私」。親密・対等・直球のトーン。
+
+【バズり型の素材（おがっち構文に溶かして使う）】
+・冒頭は場面描写・時刻・固有名詞でリアリティを出す
+・具体的なエピソード一点から思想へ展開
+・最後に静かな問いかけで終わる
+
+【出力形式】
+以下のJSON形式のみで出力してください。説明・前置き・コードブロック記号（```）は一切不要です。
+3案それぞれ、切り口や語り出しを変えて変化をつけてください。
+
+{{
+  "posts": [
+    {{"text": "案1の本文"}},
+    {{"text": "案2の本文"}},
+    {{"text": "案3の本文"}}
+  ]
+}}"""
+
+    try:
+        client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+        msg = client.messages.create(
+            model='claude-sonnet-4-6',
+            max_tokens=2500,
+            messages=[{'role': 'user', 'content': prompt}]
+        )
+        raw = msg.content[0].text.strip()
+        print(f'[POST_GEN] Claude raw response (head): {raw[:300]}', flush=True)
+
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        raw_clean = match.group() if match else raw
+        result = json_mod.loads(raw_clean)
+
+        # 文字数を実測値で付与
+        posts = result.get('posts', [])
+        for p in posts:
+            p['char_count'] = len(p.get('text', ''))
+
+        return jsonify({'posts': posts})
+
+    except json_mod.JSONDecodeError:
+        print(f'[POST_GEN] JSON parse error: {raw[:500]}', flush=True)
+        return jsonify({'error': 'AI応答の解析に失敗しました。もう一度お試しください。'}), 500
+    except Exception:
+        print(f'[POST_GEN ERROR] {traceback.format_exc()}', flush=True)
+        return jsonify({'error': '処理中にエラーが発生しました。時間をおいて再試行してください。'}), 500
+
 # ── 職員考察ツール ────────────────────────────────────────────────
 @app.route('/kansan')
 @login_required
