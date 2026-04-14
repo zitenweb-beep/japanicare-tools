@@ -77,27 +77,67 @@
     font-size:15px;font-weight:600;letter-spacing:.1em;cursor:pointer;
     font-family:inherit;transition:.15s;
   }
-  .generate:hover{background:#0055B3}
+  .generate:hover:not(:disabled){background:#0055B3}
   .generate:active{transform:scale(.99)}
+  .generate:disabled{background:#B0C4D8;cursor:not-allowed}
 
-  /* Output */
-  .output{display:none;margin-top:20px}
-  .output.visible{display:block}
-  .output pre{
-    white-space:pre-wrap;word-break:break-word;
-    background:#F5F5F7;border:1px solid #E8E8ED;border-radius:10px;padding:16px;
-    font-family:"SF Mono","Menlo",monospace;font-size:12px;line-height:1.7;color:#1D1D1F;
-    max-height:360px;overflow-y:auto;
+  /* Loading */
+  .loading{
+    display:none;align-items:center;gap:12px;padding:20px;
+    background:#F0F5FF;border:1px solid #D0E2FF;border-radius:12px;
+    color:#0071E3;font-size:14px;margin-top:20px;
   }
-  .actions{display:flex;gap:8px;margin-top:12px}
+  .loading.visible{display:flex}
+  .spinner{
+    width:18px;height:18px;border:2px solid #D0E2FF;border-top-color:#0071E3;
+    border-radius:50%;animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Error */
+  .error{
+    display:none;padding:16px;margin-top:20px;
+    background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;
+    color:#B91C1C;font-size:13px;line-height:1.6;
+  }
+  .error.visible{display:block}
+
+  /* Results */
+  .results{display:none;margin-top:20px;flex-direction:column;gap:12px}
+  .results.visible{display:flex}
+  .post-card{
+    background:#fff;border:1px solid #E8E8ED;border-radius:14px;padding:18px 18px;
+  }
+  .post-head{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;
+  }
+  .post-num{
+    font-size:12px;font-weight:700;color:#0071E3;letter-spacing:.1em;
+    background:#E8F0FE;padding:4px 10px;border-radius:9999px;
+  }
+  .post-count{font-size:12px;color:#86868B;font-weight:500}
+  .post-count.over{color:#B91C1C;font-weight:600}
+  .post-body{
+    font-size:14px;line-height:1.85;color:#1D1D1F;white-space:pre-wrap;
+    word-break:break-word;padding:12px 0;border-top:1px solid #F0F0F3;border-bottom:1px solid #F0F0F3;margin-bottom:12px;
+  }
+  .post-actions{display:flex;gap:8px}
   .btn-sub{
     background:#fff;border:1px solid #D2D2D7;border-radius:9999px;
-    padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;
+    padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;
     color:#1D1D1F;font-family:inherit;transition:.15s;
   }
   .btn-sub:hover{border-color:#0071E3;color:#0071E3}
   .btn-sub.copied{background:#E8F0FE;border-color:#0071E3;color:#0071E3}
-  .hint{font-size:12px;color:#86868B;margin-top:10px;line-height:1.7}
+
+  .regen{
+    display:none;width:100%;margin-top:4px;padding:14px;
+    background:#fff;border:1px solid #D2D2D7;border-radius:12px;
+    font-size:13px;font-weight:500;color:#6E6E73;cursor:pointer;
+    font-family:inherit;transition:.15s;
+  }
+  .regen:hover{border-color:#0071E3;color:#0071E3}
+  .regen.visible{display:block}
 </style>
 </head>
 <body>
@@ -109,7 +149,7 @@
 
   <div class="title-card">
     <h1>📣 SNS投稿ジェネレーター</h1>
-    <p class="lead">テーマを選ぶか貼り付けて、X / Threads の投稿案を生成します。おがっち構文＋バズり型を組み込んだプロンプトを出力します。</p>
+    <p class="lead">テーマを選ぶか貼り付けてGENERATE。ジャパニケア札幌の思想＋おがっち構文で、X / Threads 投稿案を3つ生成します。</p>
   </div>
 
   <div class="card">
@@ -161,17 +201,17 @@
     </div>
 
     <button class="generate" id="gen">GENERATE →</button>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div>生成中です。10〜20秒ほどお待ちください。</div>
+    </div>
+
+    <div class="error" id="error"></div>
   </div>
 
-  <div class="card output" id="output">
-    <h2>生成プロンプト（Claudeに貼り付け）</h2>
-    <pre id="promptOut"></pre>
-    <div class="actions">
-      <button class="btn-sub" id="copyBtn">📋 コピー</button>
-      <button class="btn-sub" id="openClaude" onclick="window.open('https://claude.ai/new','_blank')">Claudeを開く ↗</button>
-    </div>
-    <div class="hint">貼り付けると3案出力されます。</div>
-  </div>
+  <div class="results" id="results"></div>
+  <button class="regen" id="regen">🔄 もう一度生成する（別案）</button>
 </div>
 
 <script>
@@ -183,121 +223,116 @@ const THEMES = {
   "やりがい":{name:"仕事のやりがい",angle:"代表は現役のパニック障害。『いつかの自分が必要としていた場所』を作っている。利用者から教わることも多い。『私にはできないことが利用者さんにはできる』。凡々たる非凡 — 平凡な1日の積み重ねが非凡を作る。誠実に一歩ずつ。笑顔を増やす仕事。『AIにできないのはリアルでの交流』。感謝の気持ち、誰かの努力の結晶の上に立っている自覚。"}
 };
 let platform="x",selectedKey="";
+const $ = id => document.getElementById(id);
 
+// Toggle
 document.querySelectorAll("#toggle button").forEach(btn=>{
   btn.addEventListener("click",()=>{
     document.querySelectorAll("#toggle button").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-    platform=btn.dataset.platform;
+    platform = btn.dataset.platform;
   });
 });
 
+// Themes
 document.querySelectorAll(".theme").forEach(t=>{
   t.addEventListener("click",()=>{
     document.querySelectorAll(".theme").forEach(x=>x.classList.remove("selected"));
     t.classList.add("selected");
-    selectedKey=t.dataset.theme;
-    document.getElementById("selected").value=THEMES[selectedKey].name;
+    selectedKey = t.dataset.theme;
+    $("selected").value = THEMES[selectedKey].name;
   });
 });
 
-document.getElementById("gen").addEventListener("click",()=>{
-  const free=document.getElementById("freeText").value.trim();
-  let themeBlock="";
-  if(selectedKey){
-    themeBlock=`【テーマ】${THEMES[selectedKey].name}\n【切り口のヒント】${THEMES[selectedKey].angle}`;
-  }else if(free){
-    themeBlock=`【テーマ（自由入力）】\n${free}`;
-  }else{
+// Generate
+async function generate(){
+  const free = $("freeText").value.trim();
+  if(!selectedKey && !free){
     alert("プリセットテーマを選ぶか、自由テーマを入力してください。");
     return;
   }
-  if(selectedKey&&free){themeBlock+=`\n【補足・現場エピソード】\n${free}`;}
 
-  const platformRules=platform==="x"
-    ?"・X投稿用。全角140字ちょうど前後（130〜150字）で収める。\n・改行は最大2箇所まで。冒頭で引きつけ、終わりに余韻。"
-    :"・Threads投稿用。180〜240字で少しゆとりを持たせる。\n・改行を効果的に使い、リズムを作る（3〜5箇所）。";
+  // UI reset
+  $("error").classList.remove("visible");
+  $("results").classList.remove("visible");
+  $("regen").classList.remove("visible");
+  $("results").innerHTML = "";
+  $("loading").classList.add("visible");
+  $("gen").disabled = true;
+  $("gen").textContent = "生成中...";
 
-  const prompt=`あなたはジャパニケア札幌（合同会社JAPANICARE運営の就労継続支援B型事業所）の広報担当です。
-以下の条件で、SNS投稿案を【3案】作ってください。
+  const payload = {
+    platform: platform,
+    theme_name: selectedKey ? THEMES[selectedKey].name : "",
+    theme_angle: selectedKey ? THEMES[selectedKey].angle : "",
+    free_text: free
+  };
 
-${themeBlock}
-
-【プラットフォーム】${platform==="x"?"X (Twitter)":"Threads"}
-${platformRules}
-
-【ジャパニケア札幌の核となるスタンス（必ず滲ませる）】
-・「全方位全肯定」「福祉をカジュアルに、もっと身近に」「クールでスタイリッシュな福祉」
-・「私たちは障害者とはつきあっていない。おつきあいしているのは一人の人」というフラットな視線
-・『障害者』というラベルを無力化したい。「困っている人がいたら、できる範囲で助け合おう」レベルの自然さ
-・代表は現役のパニック障害。『いつかの自分が必要としていた居場所』を作っている
-・マノメオ（円山公園駅徒歩6分のカフェ・バー併設雑貨店）が舞台。ZINE・クラフトビール・全国福祉事業所のイケてるアイテムを扱う
-・工賃・居場所・主体性・凡々たる非凡・自分軸・誠実に一歩ずつ、などの語彙が自然に出る
-・「真の支援員はお客様でした」「みんなでみんなを応援する」という関係観
-
-【絶対NG（ジャパニケア札幌として使ってはいけない表現）】
-・「障害者の皆さまを支えて…」などの上から目線の支援者ポジション
-・「障害者が作った商品なのでぜひ応援を」など同情を誘う訴求
-・「私たちは日々利用者様に寄り添い…」などきれいごとの定型文
-・感動ポルノ、啓発的で説教くさい語り口
-・「#福祉 #B型事業所 #就労支援」などのハッシュタグ羅列（1〜2個までなら可）
-・絵文字の多用（0〜1個）
-・「〜させていただきます」「〜のではないでしょうか」などの過剰な丁寧語
-・利用者の実名・個人情報（「利用者Aさん」のように伏せる）
-
-【文体ルール：おがっち構文（厳守）】
-・一文は30〜40字以内。情報を詰め込まない。
-・「この／その／あの／それ／これ」などの指示語は極力使わない。対象を直接書く。
-・「しかし／だが／けれども」は使わない。逆接は短文の連打か「──」（ダッシュ）で表現。
-・体言止めを効果的に使い、余韻と強さを出す。
-・結論ファースト。事実・結論を先に出し、理由は後。
-・感情を説明せず、感情が伝わる事実を書く（例：「感動した」→「眠れなかった」）。
-・五感（匂い・温度・触感・音）で書く。抽象論より具体的な場面。
-・反復（「○○もない。○○もない。」）で強調。
-・問いかけ（修辞疑問）で読者を引き込む。
-・一人称は「僕」または「私」。親密・対等・直球のトーン。
-・敬語の連打や定型的な挨拶は不要。
-
-【バズり型の素材（おがっち構文に溶かして使う）】
-・冒頭は場面描写・時刻・固有名詞でリアリティを出す
-・「〜な人へ」の共感型
-・「実は〜」「意外と〜」の気づき型
-・具体的なエピソード一点から思想へ展開
-・最後に静かな問いかけで終わる
-※煽り・誇張・絵文字乱用・ハッシュタグ羅列は禁止
-
-【出力形式】
-案1：
-（本文）
-（文字数：○○字）
-
-案2：
-（本文）
-（文字数：○○字）
-
-案3：
-（本文）
-（文字数：○○字）
-
-— 以上で出力してください。`;
-
-  document.getElementById("promptOut").textContent=prompt;
-  document.getElementById("output").classList.add("visible");
-  document.getElementById("output").scrollIntoView({behavior:"smooth",block:"start"});
-});
-
-document.getElementById("copyBtn").addEventListener("click",async()=>{
-  const text=document.getElementById("promptOut").textContent;
   try{
-    await navigator.clipboard.writeText(text);
-    const btn=document.getElementById("copyBtn");
-    btn.textContent="✓ コピー済み";
-    btn.classList.add("copied");
-    setTimeout(()=>{btn.textContent="📋 コピー";btn.classList.remove("copied");},2000);
+    const res = await fetch("/post-generator/generate", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if(!res.ok){
+      throw new Error(data.error || "生成に失敗しました");
+    }
+
+    renderResults(data.posts || []);
   }catch(e){
-    alert("コピーに失敗しました。手動で選択してください。");
+    $("error").textContent = "⚠️ " + (e.message || "エラーが発生しました。時間をおいて再試行してください。");
+    $("error").classList.add("visible");
+  }finally{
+    $("loading").classList.remove("visible");
+    $("gen").disabled = false;
+    $("gen").textContent = "GENERATE →";
   }
-});
+}
+
+function renderResults(posts){
+  const container = $("results");
+  container.innerHTML = "";
+
+  posts.forEach((p, i) => {
+    const text = p.text || "";
+    const count = p.char_count || text.length;
+    const limit = platform === "x" ? 150 : 240;
+    const overClass = count > limit ? "over" : "";
+
+    const card = document.createElement("div");
+    card.className = "post-card";
+    card.innerHTML = `
+      <div class="post-head">
+        <span class="post-num">案${i+1}</span>
+        <span class="post-count ${overClass}">${count}字</span>
+      </div>
+      <div class="post-body"></div>
+      <div class="post-actions">
+        <button class="btn-sub copy-one">📋 コピー</button>
+      </div>
+    `;
+    card.querySelector(".post-body").textContent = text;
+    card.querySelector(".copy-one").addEventListener("click", async () => {
+      try{
+        await navigator.clipboard.writeText(text);
+        const btn = card.querySelector(".copy-one");
+        btn.textContent = "✓ コピー済み";
+        btn.classList.add("copied");
+        setTimeout(()=>{btn.textContent="📋 コピー";btn.classList.remove("copied");},2000);
+      }catch(err){ alert("コピーに失敗しました"); }
+    });
+    container.appendChild(card);
+  });
+
+  container.classList.add("visible");
+  $("regen").classList.add("visible");
+  container.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+$("gen").addEventListener("click", generate);
+$("regen").addEventListener("click", generate);
 </script>
 </body>
 </html>
