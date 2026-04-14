@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNS投稿ジェネレーター | JAPANICARE</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:#F5F5F7;
+    min-height:100vh;
+    padding:32px 16px 80px;
+    color:#1D1D1F;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+
+  /* Header */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+  .brand{font-size:20px;font-weight:700;letter-spacing:-0.01em}
+  .brand-sub{font-size:13px;color:#86868B;font-weight:400;margin-left:8px}
+  .back{font-size:13px;color:#6E6E73;text-decoration:none;padding:8px 16px;border:1px solid #D2D2D7;border-radius:9999px;transition:.2s}
+  .back:hover{background:#fff;border-color:#86868B}
+
+  /* Title card */
+  .title-card{background:#fff;border:1px solid #E8E8ED;border-radius:16px;padding:28px 24px;margin-bottom:20px}
+  h1{font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.01em}
+  .lead{font-size:13px;color:#6E6E73;line-height:1.7}
+
+  /* Sections */
+  .card{background:#fff;border:1px solid #E8E8ED;border-radius:16px;padding:22px 22px;margin-bottom:16px}
+  h2{font-size:13px;font-weight:600;color:#86868B;letter-spacing:0.04em;margin-bottom:14px;text-transform:uppercase}
+
+  /* Platform toggle */
+  .toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .toggle button{
+    background:#F5F5F7;color:#6E6E73;border:1px solid #E8E8ED;border-radius:10px;
+    padding:14px 0;font-size:14px;font-weight:500;cursor:pointer;transition:.15s;
+    font-family:inherit;letter-spacing:.05em;
+  }
+  .toggle button:hover{border-color:#B0C4D8}
+  .toggle button.active{background:#E8F0FE;color:#0071E3;border-color:#0071E3;font-weight:600}
+
+  /* Themes */
+  .themes{display:flex;flex-direction:column;gap:8px}
+  .theme{
+    display:grid;grid-template-columns:88px 1fr auto;align-items:center;gap:12px;
+    padding:14px 16px;background:#F5F5F7;border:1px solid transparent;border-radius:10px;
+    cursor:pointer;transition:.15s;
+  }
+  .theme:hover{background:#EDEEF0}
+  .theme.selected{background:#E8F0FE;border-color:#0071E3}
+  .theme .tag{font-size:11px;color:#86868B;font-weight:600;letter-spacing:.1em;border-right:1px solid #D2D2D7;padding-right:12px}
+  .theme .title{font-size:14px;color:#1D1D1F;font-weight:500}
+  .theme .check{width:18px;height:18px;border-radius:50%;border:1.5px solid #D2D2D7;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .theme.selected .tag{color:#0071E3}
+  .theme.selected .check{border-color:#0071E3;background:#0071E3}
+  .theme.selected .check::after{content:"";width:5px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin-bottom:2px}
+
+  /* Inputs */
+  textarea,input[type="text"]{
+    width:100%;background:#F5F5F7;border:1px solid #E8E8ED;border-radius:10px;
+    color:#1D1D1F;padding:14px;font-size:14px;line-height:1.7;
+    font-family:inherit;resize:vertical;transition:.15s;
+  }
+  textarea:focus,input:focus{outline:none;border-color:#0071E3;background:#fff}
+  textarea::placeholder,input::placeholder{color:#9999A0}
+  input[readonly]{background:#F5F5F7;color:#6E6E73}
+
+  .label-small{font-size:12px;color:#86868B;margin-bottom:8px;font-weight:500}
+  .mt{margin-top:16px}
+
+  /* Generate button */
+  .generate{
+    display:block;width:100%;margin-top:20px;padding:18px;
+    background:#0071E3;border:none;border-radius:14px;color:#fff;
+    font-size:15px;font-weight:600;letter-spacing:.1em;cursor:pointer;
+    font-family:inherit;transition:.15s;
+  }
+  .generate:hover{background:#0055B3}
+  .generate:active{transform:scale(.99)}
+
+  /* Output */
+  .output{display:none;margin-top:20px}
+  .output.visible{display:block}
+  .output pre{
+    white-space:pre-wrap;word-break:break-word;
+    background:#F5F5F7;border:1px solid #E8E8ED;border-radius:10px;padding:16px;
+    font-family:"SF Mono","Menlo",monospace;font-size:12px;line-height:1.7;color:#1D1D1F;
+    max-height:360px;overflow-y:auto;
+  }
+  .actions{display:flex;gap:8px;margin-top:12px}
+  .btn-sub{
+    background:#fff;border:1px solid #D2D2D7;border-radius:9999px;
+    padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;
+    color:#1D1D1F;font-family:inherit;transition:.15s;
+  }
+  .btn-sub:hover{border-color:#0071E3;color:#0071E3}
+  .btn-sub.copied{background:#E8F0FE;border-color:#0071E3;color:#0071E3}
+  .hint{font-size:12px;color:#86868B;margin-top:10px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><span class="brand">JAPANICARE</span><span class="brand-sub">SNS投稿ジェネレーター</span></div>
+    <a href="/" class="back">← 戻る</a>
+  </header>
+
+  <div class="title-card">
+    <h1>📣 SNS投稿ジェネレーター</h1>
+    <p class="lead">テーマを選ぶか貼り付けて、X / Threads の投稿案を生成します。おがっち構文＋バズり型を組み込んだプロンプトを出力します。</p>
+  </div>
+
+  <div class="card">
+    <h2>プラットフォーム</h2>
+    <div class="toggle" id="toggle">
+      <button data-platform="x" class="active">X (Twitter)</button>
+      <button data-platform="threads">Threads</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>プリセットテーマ</h2>
+    <div class="themes" id="themes">
+      <div class="theme" data-theme="哲学">
+        <span class="tag">哲学</span>
+        <span class="title">ジャパニケア札幌の哲学</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="責任">
+        <span class="tag">責任</span>
+        <span class="title">B型事業所の職員としての責任</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="生産活動">
+        <span class="tag">生産活動</span>
+        <span class="title">生産活動と利用者のステップアップ</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="地域">
+        <span class="tag">地域</span>
+        <span class="title">地域、社会を繋ぐ拠点、居場所</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="やりがい">
+        <span class="tag">やりがい</span>
+        <span class="title">仕事のやりがい</span>
+        <span class="check"></span>
+      </div>
+    </div>
+
+    <div class="mt">
+      <div class="label-small">または貼り付け（自由テーマ・現場エピソード）</div>
+      <textarea id="freeText" rows="3" placeholder="伝えたい内容・現場のエピソードを自由に記入（例：今日の利用者Aさんとのやりとり）"></textarea>
+    </div>
+
+    <div class="mt">
+      <div class="label-small">選択中のテーマ</div>
+      <input type="text" id="selected" placeholder="—" readonly>
+    </div>
+
+    <button class="generate" id="gen">GENERATE →</button>
+  </div>
+
+  <div class="card output" id="output">
+    <h2>生成プロンプト（Claudeに貼り付け）</h2>
+    <pre id="promptOut"></pre>
+    <div class="actions">
+      <button class="btn-sub" id="copyBtn">📋 コピー</button>
+      <button class="btn-sub" id="openClaude" onclick="window.open('https://claude.ai/new','_blank')">Claudeを開く ↗</button>
+    </div>
+    <div class="hint">貼り付けると3案出力されます。</div>
+  </div>
+</div>
+
+<script>
+const THEMES = {
+  "哲学":{name:"ジャパニケア札幌の哲学",angle:"『クールでスタイリッシュな福祉』『福祉をもっと身近に、カジュアルに』という理念。生きづらさを解消する、自分軸を持って個の魅力を高める、という根底の思想。"},
+  "責任":{name:"B型事業所の職員としての責任",angle:"利用者の人生に伴走する覚悟。精神的安全保障。一人ひとりの『その人らしさ』を守ること。支援者自身も学び続けることの責任。"},
+  "生産活動":{name:"生産活動と利用者のステップアップ",angle:"工賃だけで測れない価値。『できた』の積み重ね。役割を持つことで変わる表情。次の一歩を共に設計する。"},
+  "地域":{name:"地域、社会を繋ぐ拠点、居場所",angle:"福祉事業所を『閉じた場』にしない。近所の人、地域の店、他業種との接続。『居場所』は与えるものではなく共に作るもの。"},
+  "やりがい":{name:"仕事のやりがい",angle:"支援は与える仕事ではなく受け取る仕事でもある。利用者から教わる日々。小さな変化に立ち会える喜び。同じ景色を見る仲間がいる幸せ。"}
+};
+let platform="x",selectedKey="";
+
+document.querySelectorAll("#toggle button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll("#toggle button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    platform=btn.dataset.platform;
+  });
+});
+
+document.querySelectorAll(".theme").forEach(t=>{
+  t.addEventListener("click",()=>{
+    document.querySelectorAll(".theme").forEach(x=>x.classList.remove("selected"));
+    t.classList.add("selected");
+    selectedKey=t.dataset.theme;
+    document.getElementById("selected").value=THEMES[selectedKey].name;
+  });
+});
+
+document.getElementById("gen").addEventListener("click",()=>{
+  const free=document.getElementById("freeText").value.trim();
+  let themeBlock="";
+  if(selectedKey){
+    themeBlock=`【テーマ】${THEMES[selectedKey].name}\n【切り口のヒント】${THEMES[selectedKey].angle}`;
+  }else if(free){
+    themeBlock=`【テーマ（自由入力）】\n${free}`;
+  }else{
+    alert("プリセットテーマを選ぶか、自由テーマを入力してください。");
+    return;
+  }
+  if(selectedKey&&free){themeBlock+=`\n【補足・現場エピソード】\n${free}`;}
+
+  const platformRules=platform==="x"
+    ?"・X投稿用。全角140字ちょうど前後（130〜150字）で収める。\n・改行は最大2箇所まで。冒頭で引きつけ、終わりに余韻。"
+    :"・Threads投稿用。180〜240字で少しゆとりを持たせる。\n・改行を効果的に使い、リズムを作る（3〜5箇所）。";
+
+  const prompt=`あなたはジャパニケア札幌（合同会社JAPANICARE運営の就労継続支援B型事業所）の広報担当です。
+以下の条件で、SNS投稿案を【3案】作ってください。
+
+${themeBlock}
+
+【プラットフォーム】${platform==="x"?"X (Twitter)":"Threads"}
+${platformRules}
+
+【文体ルール：おがっち構文（厳守）】
+・一文は30〜40字以内。情報を詰め込まない。
+・「この／その／あの／それ／これ」などの指示語は極力使わない。対象を直接書く。
+・「しかし／だが／けれども」は使わない。逆接は短文の連打か「──」（ダッシュ）で表現。
+・体言止めを効果的に使い、余韻と強さを出す。
+・結論ファースト。事実・結論を先に出し、理由は後。
+・感情を説明せず、感情が伝わる事実を書く（例：「感動した」→「眠れなかった」）。
+・五感（匂い・温度・触感・音）で書く。抽象論より具体的な場面。
+・反復（「○○もない。○○もない。」）で強調。
+・問いかけ（修辞疑問）で読者を引き込む。
+・一人称は「僕」または「私」。親密・対等・直球のトーン。
+・敬語の連打や定型的な挨拶は不要。
+
+【バズり型の素材（おがっち構文に溶かして使う）】
+・冒頭は場面描写・時刻・固有名詞でリアリティを出す
+・「〜な人へ」の共感型
+・「実は〜」「意外と〜」の気づき型
+・具体的なエピソード一点から思想へ展開
+・最後に静かな問いかけで終わる
+※煽り・誇張・絵文字乱用・ハッシュタグ羅列は禁止
+
+【NG】
+・「#福祉」「#B型事業所」などのハッシュタグ羅列（1〜2個までなら可）
+・絵文字の多用（0〜1個）
+・「〜のではないでしょうか」「〜させていただきます」などの過剰な丁寧語
+・利用者の実名・個人情報（「利用者Aさん」のように伏せる）
+
+【出力形式】
+案1：
+（本文）
+（文字数：○○字）
+
+案2：
+（本文）
+（文字数：○○字）
+
+案3：
+（本文）
+（文字数：○○字）
+
+— 以上で出力してください。`;
+
+  document.getElementById("promptOut").textContent=prompt;
+  document.getElementById("output").classList.add("visible");
+  document.getElementById("output").scrollIntoView({behavior:"smooth",block:"start"});
+});
+
+document.getElementById("copyBtn").addEventListener("click",async()=>{
+  const text=document.getElementById("promptOut").textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    const btn=document.getElementById("copyBtn");
+    btn.textContent="✓ コピー済み";
+    btn.classList.add("copied");
+    setTimeout(()=>{btn.textContent="📋 コピー";btn.classList.remove("copied");},2000);
+  }catch(e){
+    alert("コピーに失敗しました。手動で選択してください。");
+  }
+});
+</script>
+</body>
+</html>
