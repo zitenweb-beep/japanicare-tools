@@ -102,7 +102,32 @@
   .result-wrap.visible{display:block}
   .result-card{
     background:#fff;border:1px solid #E8E8ED;border-radius:14px;padding:20px 20px;
+    margin-bottom:14px;
   }
+
+  /* Title suggestions */
+  .title-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .title-row{
+    display:flex;align-items:flex-start;gap:10px;padding:12px 14px;
+    background:#F5F5F7;border:1px solid #E8E8ED;border-radius:10px;
+    transition:.15s;
+  }
+  .title-row:hover{border-color:#0071E3;background:#FAFBFF}
+  .title-num{
+    flex-shrink:0;font-size:11px;font-weight:700;color:#0071E3;
+    background:#E8F0FE;padding:3px 8px;border-radius:9999px;letter-spacing:.05em;
+    margin-top:2px;
+  }
+  .title-text{
+    flex:1;font-size:13px;line-height:1.7;color:#1D1D1F;word-break:break-word;
+  }
+  .title-copy{
+    flex-shrink:0;background:#fff;border:1px solid #D2D2D7;border-radius:9999px;
+    padding:6px 12px;font-size:11px;font-weight:500;cursor:pointer;color:#1D1D1F;
+    font-family:inherit;transition:.15s;white-space:nowrap;
+  }
+  .title-copy:hover{border-color:#0071E3;color:#0071E3}
+  .title-copy.copied{background:#E8F0FE;border-color:#0071E3;color:#0071E3}
   .result-head{
     display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;
   }
@@ -207,16 +232,26 @@
     </div>
 
     <div class="mt">
-      <div class="label-small">または貼り付け（自由テーマ・現場エピソード）</div>
-      <textarea id="freeText" rows="4" placeholder="記事のテーマや現場のエピソードを自由に記入（例：今日の利用者Aさんの一言から考えたこと／新しく始めたZINEフェアの裏話）"></textarea>
+      <div class="label-small" style="font-size:13px;color:#1D1D1F;font-weight:600;margin-bottom:4px;">現場エピソード・インタビュー</div>
+      <div class="label-small">プリセットだけでは原稿が抽象的になりがち。具体的なエピソードを入力すると、ぐっと厚みのある原稿になります（どちらか一方だけでもOK）。</div>
+    </div>
+
+    <div class="mt">
+      <div class="label-small"><strong>Q1. 最近、印象に残っているできごとは何ですか？</strong></div>
+      <textarea id="episode" rows="4" placeholder="例：今朝の朝礼で利用者Aさんが『最近ZINEが面白くて』と言ってくれた。いつも寡黙な人なので驚いた。"></textarea>
       <div class="rec-row">
         <button type="button" class="rec-btn" id="recBtn">
           <span id="recIcon">🎙️</span>
-          <span id="recLabel">マイクで録音</span>
+          <span id="recLabel">マイクで録音（Q1へ）</span>
         </button>
         <span class="rec-timer" id="recTimer" style="display:none">00:00</span>
         <span class="rec-status" id="recStatus"></span>
       </div>
+    </div>
+
+    <div class="mt">
+      <div class="label-small"><strong>Q2. それを受けて、どう思いましたか。これからはどうしたいですか？</strong></div>
+      <textarea id="reflection" rows="4" placeholder="例：人は関心のあるものに出会うと、言葉が自然に出てくるんだと気づいた。『働く』を押しつけず、興味の火を見つける場にしていきたい。"></textarea>
     </div>
 
     <div class="mt">
@@ -228,13 +263,23 @@
 
     <div class="loading" id="loading">
       <div class="spinner"></div>
-      <div>生成中です。30〜60秒ほどお待ちください。</div>
+      <div>生成中です。字数が範囲外の場合は自動リトライするため、最大1〜2分かかることがあります。</div>
     </div>
 
     <div class="error" id="error"></div>
   </div>
 
   <div class="result-wrap" id="resultWrap">
+    <!-- タイトル案カード -->
+    <div class="result-card">
+      <div class="result-head">
+        <span class="result-title">💡 タイトル案（5本）</span>
+        <span class="result-count">末尾固定部は自動付与</span>
+      </div>
+      <div class="title-list" id="titleList"></div>
+    </div>
+
+    <!-- 原稿カード -->
     <div class="result-card">
       <div class="result-head">
         <span class="result-title">📝 note原稿</span>
@@ -273,15 +318,16 @@ document.querySelectorAll(".theme").forEach(t=>{
 // Generate
 async function generate(){
   const staff = $("staffName").value.trim();
-  const free = $("freeText").value.trim();
+  const episode = $("episode").value.trim();
+  const reflection = $("reflection").value.trim();
 
   if(!staff){
     alert("スタッフの名前を入力してください。");
     $("staffName").focus();
     return;
   }
-  if(!selectedKey && !free){
-    alert("プリセットテーマを選ぶか、自由テーマを入力してください。");
+  if(!selectedKey && !episode && !reflection){
+    alert("プリセットテーマを選ぶか、Q1またはQ2を入力してください。");
     return;
   }
 
@@ -297,7 +343,8 @@ async function generate(){
     staff_name: staff,
     theme_name: selectedKey ? THEMES[selectedKey].name : "",
     theme_angle: selectedKey ? THEMES[selectedKey].angle : "",
-    free_text: free
+    episode: episode,
+    reflection: reflection
   };
 
   try{
@@ -312,6 +359,7 @@ async function generate(){
       throw new Error(data.error || "生成に失敗しました");
     }
 
+    renderTitles(data.titles || []);
     renderResult(data.text || "", data.char_count || 0);
   }catch(e){
     $("error").textContent = "⚠️ " + (e.message || "エラーが発生しました。時間をおいて再試行してください。");
@@ -323,14 +371,39 @@ async function generate(){
   }
 }
 
+function renderTitles(titles){
+  const container = $("titleList");
+  container.innerHTML = "";
+  titles.forEach((t, i) => {
+    const row = document.createElement("div");
+    row.className = "title-row";
+    row.innerHTML = `
+      <span class="title-num">案${i+1}</span>
+      <span class="title-text"></span>
+      <button class="title-copy">📋</button>
+    `;
+    row.querySelector(".title-text").textContent = t;
+    const btn = row.querySelector(".title-copy");
+    btn.addEventListener("click", async () => {
+      try{
+        await navigator.clipboard.writeText(t);
+        btn.textContent = "✓";
+        btn.classList.add("copied");
+        setTimeout(()=>{btn.textContent="📋";btn.classList.remove("copied");}, 1500);
+      }catch(err){ alert("コピーに失敗しました"); }
+    });
+    container.appendChild(row);
+  });
+}
+
 function renderResult(text, count){
   $("resultBody").textContent = text;
 
-  let cls = "";
+  let cls = "over";  // デフォルトは範囲外
   if(count >= 1800 && count <= 2200) cls = "ok";
-  else if(count > 2400 || count < 1600) cls = "over";
   $("resultCount").className = "result-count " + cls;
-  $("resultCount").textContent = count + "字";
+  const mark = (count >= 1800 && count <= 2200) ? "✓" : "⚠";
+  $("resultCount").textContent = `${mark} ${count}字 / 1800〜2200字`;
 
   $("resultWrap").classList.add("visible");
   $("regen").classList.add("visible");
@@ -467,10 +540,10 @@ async function handleRecordingStop(){
     const data = await res.json();
     if(!res.ok) throw new Error(data.error || "文字起こしに失敗しました");
 
-    const existing = $("freeText").value.trim();
+    const existing = $("episode").value.trim();
     const joined = existing ? existing + "\n" + data.transcript : data.transcript;
-    $("freeText").value = joined;
-    setRecStatus("✓ 文字起こし完了");
+    $("episode").value = joined;
+    setRecStatus("✓ 文字起こし完了（Q1に追記）");
   }catch(e){
     setRecStatus("⚠️ " + e.message, true);
   }finally{
