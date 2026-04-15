@@ -138,6 +138,26 @@
   }
   .regen:hover{border-color:#0071E3;color:#0071E3}
   .regen.visible{display:block}
+
+  /* Recording */
+  .rec-row{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
+  .rec-btn{
+    display:flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid #D2D2D7;border-radius:9999px;
+    padding:10px 18px;font-size:13px;font-weight:500;color:#1D1D1F;
+    cursor:pointer;font-family:inherit;transition:.15s;
+  }
+  .rec-btn:hover{border-color:#0071E3;color:#0071E3}
+  .rec-btn:disabled{opacity:.5;cursor:not-allowed}
+  .rec-btn.recording{background:#FEF2F2;border-color:#DC2626;color:#DC2626}
+  .rec-dot{
+    width:10px;height:10px;border-radius:50%;background:#DC2626;
+    animation:pulse 1.2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .rec-timer{font-size:13px;font-weight:600;color:#DC2626;font-variant-numeric:tabular-nums}
+  .rec-status{font-size:12px;color:#86868B}
+  .rec-status.error{color:#B91C1C}
 </style>
 </head>
 <body>
@@ -193,6 +213,14 @@
     <div class="mt">
       <div class="label-small">または貼り付け（自由テーマ・現場エピソード）</div>
       <textarea id="freeText" rows="3" placeholder="伝えたい内容・現場のエピソードを自由に記入（例：今日の利用者Aさんとのやりとり）"></textarea>
+      <div class="rec-row">
+        <button type="button" class="rec-btn" id="recBtn">
+          <span id="recIcon">🎙️</span>
+          <span id="recLabel">マイクで録音</span>
+        </button>
+        <span class="rec-timer" id="recTimer" style="display:none">00:00</span>
+        <span class="rec-status" id="recStatus"></span>
+      </div>
     </div>
 
     <div class="mt">
@@ -333,6 +361,144 @@ function renderResults(posts){
 
 $("gen").addEventListener("click", generate);
 $("regen").addEventListener("click", generate);
+
+// ── 録音機能 ───────────────────────────────────────────────────
+let mediaRecorder = null;
+let recordedChunks = [];
+let recStream = null;
+let recStartTime = 0;
+let recTimerInterval = null;
+const MAX_REC_SEC = 180; // 3分
+
+function setRecStatus(msg, isError=false){
+  const el = $("recStatus");
+  el.textContent = msg;
+  el.classList.toggle("error", isError);
+}
+
+function updateTimer(){
+  const sec = Math.floor((Date.now() - recStartTime) / 1000);
+  const mm = String(Math.floor(sec/60)).padStart(2,"0");
+  const ss = String(sec%60).padStart(2,"0");
+  $("recTimer").textContent = `${mm}:${ss}`;
+  if(sec >= MAX_REC_SEC){
+    stopRecording();
+    setRecStatus("3分で自動停止しました");
+  }
+}
+
+async function startRecording(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    setRecStatus("このブラウザは録音に対応していません", true);
+    return;
+  }
+  setRecStatus("");
+  try{
+    recStream = await navigator.mediaDevices.getUserMedia({audio: true});
+  }catch(e){
+    setRecStatus("マイクの使用が許可されませんでした", true);
+    return;
+  }
+
+  // ブラウザが対応する形式を自動選択
+  let mimeType = "";
+  const candidates = ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"];
+  for(const m of candidates){
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)){
+      mimeType = m; break;
+    }
+  }
+
+  recordedChunks = [];
+  try{
+    mediaRecorder = mimeType
+      ? new MediaRecorder(recStream, {mimeType})
+      : new MediaRecorder(recStream);
+  }catch(e){
+    setRecStatus("録音を開始できませんでした", true);
+    stopStream();
+    return;
+  }
+
+  mediaRecorder.ondataavailable = (e) => {
+    if(e.data && e.data.size > 0) recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = handleRecordingStop;
+
+  mediaRecorder.start();
+  recStartTime = Date.now();
+  recTimerInterval = setInterval(updateTimer, 500);
+  $("recTimer").style.display = "inline";
+  $("recBtn").classList.add("recording");
+  $("recIcon").textContent = "■";
+  $("recLabel").textContent = "録音停止";
+  updateTimer();
+}
+
+function stopStream(){
+  if(recStream){
+    recStream.getTracks().forEach(t => t.stop());
+    recStream = null;
+  }
+}
+
+function stopRecording(){
+  if(mediaRecorder && mediaRecorder.state !== "inactive"){
+    mediaRecorder.stop();
+  }
+  clearInterval(recTimerInterval);
+  $("recBtn").classList.remove("recording");
+  $("recIcon").innerHTML = '<span class="rec-dot"></span>'; // temp
+  $("recIcon").textContent = "🎙️";
+  $("recLabel").textContent = "マイクで録音";
+  $("recTimer").style.display = "none";
+}
+
+async function handleRecordingStop(){
+  stopStream();
+  const mimeType = mediaRecorder.mimeType || "audio/webm";
+  const blob = new Blob(recordedChunks, {type: mimeType});
+  recordedChunks = [];
+
+  if(blob.size < 1000){
+    setRecStatus("録音が短すぎます。もう少し長く話してください", true);
+    return;
+  }
+
+  // 拡張子を決定
+  let ext = "webm";
+  if(mimeType.includes("mp4")) ext = "mp4";
+  else if(mimeType.includes("ogg")) ext = "ogg";
+
+  setRecStatus("⏳ 文字起こし中...（10〜30秒）");
+  $("recBtn").disabled = true;
+
+  const fd = new FormData();
+  fd.append("audio", blob, `audio.${ext}`);
+
+  try{
+    const res = await fetch("/post-generator/transcribe", {method:"POST", body: fd});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || "文字起こしに失敗しました");
+
+    const existing = $("freeText").value.trim();
+    const joined = existing ? existing + "\n" + data.transcript : data.transcript;
+    $("freeText").value = joined;
+    setRecStatus("✓ 文字起こし完了");
+  }catch(e){
+    setRecStatus("⚠️ " + e.message, true);
+  }finally{
+    $("recBtn").disabled = false;
+  }
+}
+
+$("recBtn").addEventListener("click", () => {
+  if(mediaRecorder && mediaRecorder.state === "recording"){
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
 </script>
 </body>
 </html>
