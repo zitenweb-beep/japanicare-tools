@@ -357,6 +357,59 @@ def post_generator_generate():
         print(f'[POST_GEN ERROR] {traceback.format_exc()}', flush=True)
         return jsonify({'error': '処理中にエラーが発生しました。時間をおいて再試行してください。'}), 500
 
+# ── SNS投稿ジェネレーター 音声文字起こし ──────────────────────────
+@app.route('/post-generator/transcribe', methods=['POST'])
+@login_required
+def post_generator_transcribe():
+    if 'audio' not in request.files:
+        return jsonify({'error': '音声ファイルがありません'}), 400
+
+    audio_file = request.files['audio']
+
+    # ファイル拡張子を元のファイル名から推測（webm/mp4/m4aなど）
+    filename = audio_file.filename or 'audio.webm'
+    ext = '.webm'
+    for e in ['.webm', '.mp4', '.m4a', '.mp3', '.wav', '.ogg']:
+        if filename.lower().endswith(e):
+            ext = e
+            break
+
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
+            audio_file.save(tmp.name)
+            tmp_path = tmp.name
+
+        model = get_whisper()
+        segments, _ = model.transcribe(
+            tmp_path, language='ja', beam_size=5,
+            vad_filter=True,
+            vad_parameters=dict(min_silence_duration_ms=500)
+        )
+
+        fillers = ['えー', 'あー', 'あのー', 'えーと', 'えっと', 'うーん', 'そのー']
+        parts = []
+        for seg in segments:
+            text = seg.text.strip()
+            for f in fillers:
+                text = text.replace(f, '')
+            if text:
+                parts.append(text)
+        transcript = ''.join(parts).strip()
+
+        if not transcript:
+            return jsonify({'error': '音声を認識できませんでした。もう一度お試しください。'}), 400
+
+        return jsonify({'transcript': transcript})
+
+    except Exception:
+        print(f'[POST_TRANSCRIBE ERROR] {traceback.format_exc()}', flush=True)
+        return jsonify({'error': '文字起こし中にエラーが発生しました。'}), 500
+    finally:
+        if tmp_path:
+            try: os.remove(tmp_path)
+            except: pass
+
 # ── 職員考察ツール ────────────────────────────────────────────────
 @app.route('/kansan')
 @login_required
