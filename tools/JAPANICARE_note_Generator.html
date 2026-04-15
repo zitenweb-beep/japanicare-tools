@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>note執筆ツール | JAPANICARE</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:#F5F5F7;
+    min-height:100vh;
+    padding:32px 16px 80px;
+    color:#1D1D1F;
+  }
+  .wrap{max-width:720px;margin:0 auto}
+
+  /* Header */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+  .brand{font-size:20px;font-weight:700;letter-spacing:-0.01em}
+  .brand-sub{font-size:13px;color:#86868B;font-weight:400;margin-left:8px}
+  .back{font-size:13px;color:#6E6E73;text-decoration:none;padding:8px 16px;border:1px solid #D2D2D7;border-radius:9999px;transition:.2s}
+  .back:hover{background:#fff;border-color:#86868B}
+
+  /* Title card */
+  .title-card{background:#fff;border:1px solid #E8E8ED;border-radius:16px;padding:28px 24px;margin-bottom:20px}
+  h1{font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.01em}
+  .lead{font-size:13px;color:#6E6E73;line-height:1.7}
+
+  /* Sections */
+  .card{background:#fff;border:1px solid #E8E8ED;border-radius:16px;padding:22px 22px;margin-bottom:16px}
+  h2{font-size:13px;font-weight:600;color:#86868B;letter-spacing:0.04em;margin-bottom:14px;text-transform:uppercase}
+
+  /* Themes */
+  .themes{display:flex;flex-direction:column;gap:8px}
+  .theme{
+    display:grid;grid-template-columns:88px 1fr auto;align-items:center;gap:12px;
+    padding:14px 16px;background:#F5F5F7;border:1px solid transparent;border-radius:10px;
+    cursor:pointer;transition:.15s;
+  }
+  .theme:hover{background:#EDEEF0}
+  .theme.selected{background:#E8F0FE;border-color:#0071E3}
+  .theme .tag{font-size:11px;color:#86868B;font-weight:600;letter-spacing:.1em;border-right:1px solid #D2D2D7;padding-right:12px}
+  .theme .title{font-size:14px;color:#1D1D1F;font-weight:500}
+  .theme .check{width:18px;height:18px;border-radius:50%;border:1.5px solid #D2D2D7;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .theme.selected .tag{color:#0071E3}
+  .theme.selected .check{border-color:#0071E3;background:#0071E3}
+  .theme.selected .check::after{content:"";width:5px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);margin-bottom:2px}
+
+  /* Inputs */
+  textarea,input[type="text"]{
+    width:100%;background:#F5F5F7;border:1px solid #E8E8ED;border-radius:10px;
+    color:#1D1D1F;padding:14px;font-size:14px;line-height:1.7;
+    font-family:inherit;resize:vertical;transition:.15s;
+  }
+  textarea:focus,input:focus{outline:none;border-color:#0071E3;background:#fff}
+  textarea::placeholder,input::placeholder{color:#9999A0}
+  input[readonly]{background:#F5F5F7;color:#6E6E73}
+
+  .label-small{font-size:12px;color:#86868B;margin-bottom:8px;font-weight:500}
+  .mt{margin-top:16px}
+
+  /* Staff name emphasis */
+  .staff-card{background:#FFF9E6;border-color:#FDE68A}
+  .staff-card h2{color:#92400E}
+  .staff-card input[type="text"]:not([readonly]){background:#fff;border-color:#FDE68A}
+
+  /* Generate button */
+  .generate{
+    display:block;width:100%;margin-top:20px;padding:18px;
+    background:#0071E3;border:none;border-radius:14px;color:#fff;
+    font-size:15px;font-weight:600;letter-spacing:.1em;cursor:pointer;
+    font-family:inherit;transition:.15s;
+  }
+  .generate:hover:not(:disabled){background:#0055B3}
+  .generate:active{transform:scale(.99)}
+  .generate:disabled{background:#B0C4D8;cursor:not-allowed}
+
+  /* Loading */
+  .loading{
+    display:none;align-items:center;gap:12px;padding:20px;
+    background:#F0F5FF;border:1px solid #D0E2FF;border-radius:12px;
+    color:#0071E3;font-size:14px;margin-top:20px;
+  }
+  .loading.visible{display:flex}
+  .spinner{
+    width:18px;height:18px;border:2px solid #D0E2FF;border-top-color:#0071E3;
+    border-radius:50%;animation:spin .7s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Error */
+  .error{
+    display:none;padding:16px;margin-top:20px;
+    background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;
+    color:#B91C1C;font-size:13px;line-height:1.6;
+  }
+  .error.visible{display:block}
+
+  /* Result */
+  .result-wrap{display:none;margin-top:20px}
+  .result-wrap.visible{display:block}
+  .result-card{
+    background:#fff;border:1px solid #E8E8ED;border-radius:14px;padding:20px 20px;
+  }
+  .result-head{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;
+  }
+  .result-title{
+    font-size:12px;font-weight:700;color:#0071E3;letter-spacing:.1em;
+    background:#E8F0FE;padding:4px 10px;border-radius:9999px;
+  }
+  .result-count{font-size:12px;color:#86868B;font-weight:500}
+  .result-count.over{color:#B91C1C;font-weight:600}
+  .result-count.ok{color:#059669;font-weight:600}
+  .result-body{
+    font-size:14px;line-height:2.0;color:#1D1D1F;white-space:pre-wrap;
+    word-break:break-word;padding:14px 0;border-top:1px solid #F0F0F3;border-bottom:1px solid #F0F0F3;margin-bottom:14px;
+    max-height:480px;overflow-y:auto;
+  }
+  .result-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn-sub{
+    background:#fff;border:1px solid #D2D2D7;border-radius:9999px;
+    padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;
+    color:#1D1D1F;font-family:inherit;transition:.15s;
+  }
+  .btn-sub:hover{border-color:#0071E3;color:#0071E3}
+  .btn-sub.copied{background:#E8F0FE;border-color:#0071E3;color:#0071E3}
+
+  .regen{
+    display:none;width:100%;margin-top:12px;padding:14px;
+    background:#fff;border:1px solid #D2D2D7;border-radius:12px;
+    font-size:13px;font-weight:500;color:#6E6E73;cursor:pointer;
+    font-family:inherit;transition:.15s;
+  }
+  .regen:hover{border-color:#0071E3;color:#0071E3}
+  .regen.visible{display:block}
+
+  /* Recording */
+  .rec-row{display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap}
+  .rec-btn{
+    display:flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid #D2D2D7;border-radius:9999px;
+    padding:10px 18px;font-size:13px;font-weight:500;color:#1D1D1F;
+    cursor:pointer;font-family:inherit;transition:.15s;
+  }
+  .rec-btn:hover{border-color:#0071E3;color:#0071E3}
+  .rec-btn:disabled{opacity:.5;cursor:not-allowed}
+  .rec-btn.recording{background:#FEF2F2;border-color:#DC2626;color:#DC2626}
+  .rec-dot{
+    width:10px;height:10px;border-radius:50%;background:#DC2626;
+    animation:pulse 1.2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .rec-timer{font-size:13px;font-weight:600;color:#DC2626;font-variant-numeric:tabular-nums}
+  .rec-status{font-size:12px;color:#86868B}
+  .rec-status.error{color:#B91C1C}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><span class="brand">JAPANICARE</span><span class="brand-sub">note執筆ツール</span></div>
+    <a href="/" class="back">← 戻る</a>
+  </header>
+
+  <div class="title-card">
+    <h1>📝 note執筆ツール</h1>
+    <p class="lead">スタッフ名とテーマを指定してGENERATE。ジャパニケア札幌の思想＋おがっち構文で、2000字前後のnote原稿を生成します。導入・結びは固定フォーマットで自動挿入。</p>
+  </div>
+
+  <!-- Staff Name (top, emphasized) -->
+  <div class="card staff-card">
+    <h2>スタッフの名前（必須）</h2>
+    <input type="text" id="staffName" placeholder="例：緒方 / 緒方修 / 佐藤 など" autocomplete="off">
+    <div class="label-small mt">※ 導入と結びに自動挿入されます</div>
+  </div>
+
+  <div class="card">
+    <h2>プリセットテーマ</h2>
+    <div class="themes" id="themes">
+      <div class="theme" data-theme="全方位">
+        <span class="tag">全方位</span>
+        <span class="title">ラベル無力化 × 全方位全肯定</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="寄り添う">
+        <span class="tag">寄り添う</span>
+        <span class="title">寄り添う支援（否定しない・安心・挑戦）</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="自分軸">
+        <span class="tag">自分軸</span>
+        <span class="title">自分軸と意思決定</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="仕事づくり">
+        <span class="tag">仕事</span>
+        <span class="title">仕事づくりとマーケット感覚</span>
+        <span class="check"></span>
+      </div>
+      <div class="theme" data-theme="マノメオ">
+        <span class="tag">マノメオ</span>
+        <span class="title">マノメオという場（店舗・お客様・ZINE）</span>
+        <span class="check"></span>
+      </div>
+    </div>
+
+    <div class="mt">
+      <div class="label-small">または貼り付け（自由テーマ・現場エピソード）</div>
+      <textarea id="freeText" rows="4" placeholder="記事のテーマや現場のエピソードを自由に記入（例：今日の利用者Aさんの一言から考えたこと／新しく始めたZINEフェアの裏話）"></textarea>
+      <div class="rec-row">
+        <button type="button" class="rec-btn" id="recBtn">
+          <span id="recIcon">🎙️</span>
+          <span id="recLabel">マイクで録音</span>
+        </button>
+        <span class="rec-timer" id="recTimer" style="display:none">00:00</span>
+        <span class="rec-status" id="recStatus"></span>
+      </div>
+    </div>
+
+    <div class="mt">
+      <div class="label-small">選択中のテーマ</div>
+      <input type="text" id="selected" placeholder="—" readonly>
+    </div>
+
+    <button class="generate" id="gen">GENERATE →</button>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <div>生成中です。30〜60秒ほどお待ちください。</div>
+    </div>
+
+    <div class="error" id="error"></div>
+  </div>
+
+  <div class="result-wrap" id="resultWrap">
+    <div class="result-card">
+      <div class="result-head">
+        <span class="result-title">📝 note原稿</span>
+        <span class="result-count" id="resultCount">—</span>
+      </div>
+      <div class="result-body" id="resultBody"></div>
+      <div class="result-actions">
+        <button class="btn-sub" id="copyBtn">📋 全文コピー</button>
+      </div>
+    </div>
+    <button class="regen" id="regen">🔄 もう一度生成する（別案）</button>
+  </div>
+</div>
+
+<script>
+const THEMES = {
+  "全方位":{name:"ラベル無力化 × 全方位全肯定",angle:"最上位の核。『私たちは障害者とはつきあっていない。おつきあいしているのは一人の人』というフラットな視線。『障害者というラベルを無力化したい（「無」にしたい）』。『合理的配慮』という言葉への違和感 — 『配慮する側／される側』で新たな分断が生まれる。『少しだけやさしくしよう』で十分。『みんな違って、みんなどうでもいい』（落合陽一）も支持。多様性をスタンダードに。過剰に干渉しない。ただ認め合う。全方位全肯定 — 福祉をカジュアルに、もっと身近に。"},
+  "寄り添う":{name:"寄り添う支援（否定しない・安心・挑戦）",angle:"成長を加速させる3原則。①否定しない関わりが安心を生む（『大丈夫、ゆっくりやろう』『同じ質問をくり返しても根気よく』）。②安心が挑戦を引き出す（失敗を責められない環境があると挑戦のハードルが下がる）。③穏やかな空気がチームを育てる（焦らせない・比べない・責めない／認める・見守る・ときには待つ）。作業のスピードより人の成長スピードを優先。『やさしさの循環』『安心のバトン』は職員→利用者→お客様に伝わる。ただしプロなので、やさしさに甘えない。『人からいただいた時間、返せるものは何か』を問い続ける。"},
+  "自分軸":{name:"自分軸と意思決定",angle:"『意思決定権はそれぞれにある』。障害の有無は関係ない。B型事業所の責務：利用者の『意向』を尊重し『意思決定』を支援する。正確な情報開示と選択肢の提示が前提。『自分軸 = 判断基準』。日々の選択を自分で決めているか？流されていないか？迷子になっていないか？『主体性は理念であり設計』— 『考えざるを得ない構造』を緻密なしくみで用意する。『人を信じることをあえてしくみに落とし込む』覚悟。自分軸があれば人の話・他人のやっていることは気にならなくなる。『自分にしかできないことをやる』。"},
+  "仕事づくり":{name:"仕事づくりとマーケット感覚",angle:"工賃の本質：『売上 − コスト = 工賃』。シンプル。他責にしない、制度のせいにしない。仕事は作れる — マーケット感覚の有無で決まる。工程の細分化で特性・得意に応じた仕事は必ず作れる（ボトルネック解消）。『現在は存在しない仕事』もプロダクトアウト発想で作れる。『脳に汗をかけ』。B型事業所は底辺ではない。輝ける場所。選択肢の一つ。体調チェックシート（1日3回、0〜10）で小さな変化をキャッチするプロの仕事。『著変なし』という便利な言葉を日報に書かない。組織能力3本柱：マニュアル化・しくみ化／個人の成長／ルールのアップデート。変わらないために、変わりつづける。"},
+  "マノメオ":{name:"マノメオという場（店舗・お客様・ZINE）",angle:"ジャパニケア札幌が運営する店舗の話。マノメオは『いろんな人が集まる場所、多様な価値観が交わる場所』。カフェ・バー併設雑貨店という形式で、障害者ラベルを自然に溶かす。『真の支援員はお客様でした』。全国各地の福祉事業所のイケてるアイテムをキュレーション（『障害者が作った』は強調しない、商品力だけで勝負）。ZINE × 福祉（2026年1月〜、シェア型書店化）。クラフトビール（鹿児島ひふみよ／京都西陣爆酒／東京方南ローカルグッド、北海道では当店のみ）。1杯300円の『支援ビール』。消費が『どこかの知らない誰かさん』の工賃になる設計。みんなでみんなを応援する。"}
+};
+let selectedKey="";
+const $ = id => document.getElementById(id);
+
+// Themes
+document.querySelectorAll(".theme").forEach(t=>{
+  t.addEventListener("click",()=>{
+    document.querySelectorAll(".theme").forEach(x=>x.classList.remove("selected"));
+    t.classList.add("selected");
+    selectedKey = t.dataset.theme;
+    $("selected").value = THEMES[selectedKey].name;
+  });
+});
+
+// Generate
+async function generate(){
+  const staff = $("staffName").value.trim();
+  const free = $("freeText").value.trim();
+
+  if(!staff){
+    alert("スタッフの名前を入力してください。");
+    $("staffName").focus();
+    return;
+  }
+  if(!selectedKey && !free){
+    alert("プリセットテーマを選ぶか、自由テーマを入力してください。");
+    return;
+  }
+
+  $("error").classList.remove("visible");
+  $("resultWrap").classList.remove("visible");
+  $("regen").classList.remove("visible");
+  $("resultBody").textContent = "";
+  $("loading").classList.add("visible");
+  $("gen").disabled = true;
+  $("gen").textContent = "生成中...";
+
+  const payload = {
+    staff_name: staff,
+    theme_name: selectedKey ? THEMES[selectedKey].name : "",
+    theme_angle: selectedKey ? THEMES[selectedKey].angle : "",
+    free_text: free
+  };
+
+  try{
+    const res = await fetch("/note-generator/generate", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if(!res.ok){
+      throw new Error(data.error || "生成に失敗しました");
+    }
+
+    renderResult(data.text || "", data.char_count || 0);
+  }catch(e){
+    $("error").textContent = "⚠️ " + (e.message || "エラーが発生しました。時間をおいて再試行してください。");
+    $("error").classList.add("visible");
+  }finally{
+    $("loading").classList.remove("visible");
+    $("gen").disabled = false;
+    $("gen").textContent = "GENERATE →";
+  }
+}
+
+function renderResult(text, count){
+  $("resultBody").textContent = text;
+
+  let cls = "";
+  if(count >= 1800 && count <= 2200) cls = "ok";
+  else if(count > 2400 || count < 1600) cls = "over";
+  $("resultCount").className = "result-count " + cls;
+  $("resultCount").textContent = count + "字";
+
+  $("resultWrap").classList.add("visible");
+  $("regen").classList.add("visible");
+  $("resultWrap").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+$("copyBtn").addEventListener("click", async () => {
+  const text = $("resultBody").textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    const btn = $("copyBtn");
+    btn.textContent = "✓ コピー済み";
+    btn.classList.add("copied");
+    setTimeout(()=>{btn.textContent="📋 全文コピー";btn.classList.remove("copied");},2000);
+  }catch(err){ alert("コピーに失敗しました"); }
+});
+
+$("gen").addEventListener("click", generate);
+$("regen").addEventListener("click", generate);
+
+// ── 録音機能 ───────────────────────────────────────────────────
+let mediaRecorder = null;
+let recordedChunks = [];
+let recStream = null;
+let recStartTime = 0;
+let recTimerInterval = null;
+const MAX_REC_SEC = 300; // 5分
+
+function setRecStatus(msg, isError=false){
+  const el = $("recStatus");
+  el.textContent = msg;
+  el.classList.toggle("error", isError);
+}
+
+function updateTimer(){
+  const sec = Math.floor((Date.now() - recStartTime) / 1000);
+  const mm = String(Math.floor(sec/60)).padStart(2,"0");
+  const ss = String(sec%60).padStart(2,"0");
+  $("recTimer").textContent = `${mm}:${ss}`;
+  if(sec >= MAX_REC_SEC){
+    stopRecording();
+    setRecStatus("5分で自動停止しました");
+  }
+}
+
+async function startRecording(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    setRecStatus("このブラウザは録音に対応していません", true);
+    return;
+  }
+  setRecStatus("");
+  try{
+    recStream = await navigator.mediaDevices.getUserMedia({audio: true});
+  }catch(e){
+    setRecStatus("マイクの使用が許可されませんでした", true);
+    return;
+  }
+
+  let mimeType = "";
+  const candidates = ["audio/webm;codecs=opus","audio/webm","audio/mp4","audio/ogg"];
+  for(const m of candidates){
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)){
+      mimeType = m; break;
+    }
+  }
+
+  recordedChunks = [];
+  try{
+    mediaRecorder = mimeType
+      ? new MediaRecorder(recStream, {mimeType})
+      : new MediaRecorder(recStream);
+  }catch(e){
+    setRecStatus("録音を開始できませんでした", true);
+    stopStream();
+    return;
+  }
+
+  mediaRecorder.ondataavailable = (e) => {
+    if(e.data && e.data.size > 0) recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = handleRecordingStop;
+
+  mediaRecorder.start();
+  recStartTime = Date.now();
+  recTimerInterval = setInterval(updateTimer, 500);
+  $("recTimer").style.display = "inline";
+  $("recBtn").classList.add("recording");
+  $("recIcon").textContent = "■";
+  $("recLabel").textContent = "録音停止";
+  updateTimer();
+}
+
+function stopStream(){
+  if(recStream){
+    recStream.getTracks().forEach(t => t.stop());
+    recStream = null;
+  }
+}
+
+function stopRecording(){
+  if(mediaRecorder && mediaRecorder.state !== "inactive"){
+    mediaRecorder.stop();
+  }
+  clearInterval(recTimerInterval);
+  $("recBtn").classList.remove("recording");
+  $("recIcon").textContent = "🎙️";
+  $("recLabel").textContent = "マイクで録音";
+  $("recTimer").style.display = "none";
+}
+
+async function handleRecordingStop(){
+  stopStream();
+  const mimeType = mediaRecorder.mimeType || "audio/webm";
+  const blob = new Blob(recordedChunks, {type: mimeType});
+  recordedChunks = [];
+
+  if(blob.size < 1000){
+    setRecStatus("録音が短すぎます。もう少し長く話してください", true);
+    return;
+  }
+
+  let ext = "webm";
+  if(mimeType.includes("mp4")) ext = "mp4";
+  else if(mimeType.includes("ogg")) ext = "ogg";
+
+  setRecStatus("⏳ 文字起こし中...（10〜30秒）");
+  $("recBtn").disabled = true;
+
+  const fd = new FormData();
+  fd.append("audio", blob, `audio.${ext}`);
+
+  try{
+    const res = await fetch("/post-generator/transcribe", {method:"POST", body: fd});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || "文字起こしに失敗しました");
+
+    const existing = $("freeText").value.trim();
+    const joined = existing ? existing + "\n" + data.transcript : data.transcript;
+    $("freeText").value = joined;
+    setRecStatus("✓ 文字起こし完了");
+  }catch(e){
+    setRecStatus("⚠️ " + e.message, true);
+  }finally{
+    $("recBtn").disabled = false;
+  }
+}
+
+$("recBtn").addEventListener("click", () => {
+  if(mediaRecorder && mediaRecorder.state === "recording"){
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
+</script>
+</body>
+</html>
